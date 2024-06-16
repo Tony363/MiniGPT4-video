@@ -16,6 +16,7 @@ import shutil
 from PIL import Image
 from moviepy.editor import VideoFileClip
 from theme import minigptlv_style, custom_css,text_css
+
 def create_video_grid(images, rows, cols,save_path):
     image_width, image_height = images[0].size
     grid_width = cols * image_width
@@ -103,6 +104,7 @@ def prepare_input(vis_processor,video_path,subtitle_path,instruction):
     images = torch.stack(images)
     instruction = img_placeholder + '\n' + instruction
     return images,instruction
+
 def extract_audio(video_path, audio_path):
     video_clip = mp.VideoFileClip(video_path)
     audio_clip = video_clip.audio
@@ -337,6 +339,12 @@ with gr.Blocks(title="MiniGPT4-video 🎞️🍿",css=text_css ) as demo :
 
 
 if __name__ == "__main__":
+    '''
+    # Llama2
+    python minigpt4_video_demo.py --ckpt checkpoints/video_captioning_llama_checkpoint_last.pth --cfg-path test_configs/llama2_test_config.yaml
+    # Mistral
+    python minigpt4_video_demo.py --ckpt checkpoints/video_mistral_checkpoint_last.pth --cfg-path test_configs/mistral_test_config.yaml
+    '''
     demo.queue().launch(share=True,show_error=True)
 
     

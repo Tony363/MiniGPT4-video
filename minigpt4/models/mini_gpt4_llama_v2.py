@@ -18,7 +18,8 @@ from peft import (
     LoraConfig,
     get_peft_model,
     get_peft_model_state_dict,
-    prepare_model_for_int8_training,
+    # prepare_model_for_int8_training,
+    prepare_model_for_kbit_training,
     set_peft_model_state_dict,
 )
 import time
@@ -151,7 +152,8 @@ class MiniGPT4_llama_v2(Blip2Base):
             
             
         # self.llama_model.resize_token_embeddings(len(self.llama_tokenizer))
-        self.llama_model = prepare_model_for_int8_training(self.llama_model)
+        # self.llama_model = prepare_model_for_int8_training(self.llama_model)
+        self.llama_model = prepare_model_for_kbit_training(self.llama_model)
 
 
 
