@@ -872,7 +872,7 @@ class EngageNetBuilder(BaseDatasetBuilder):
     train_dataset_cls = EngageNetDataset # Add the dataset class here
 
     DATASET_CONFIG_DICT = {
-        "default": "minigpt4/configs/datasets/engagenet/default.yaml",
+        "default": "configs/datasets/engagenet/default.yaml",
     }
     print(DATASET_CONFIG_DICT)
 

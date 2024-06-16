@@ -3,23 +3,24 @@ model:
   model_type: pretrain_vicuna
   freeze_vit: True
   freeze_qformer: True
-  max_txt_len: 256 #512
+  max_txt_len: 256
   low_resource: False
   image_size: 224
   end_sym: "</s>"
-  llama_model: "mistralai/Mistral-7B-Instruct-v0.2"
-  ckpt: "checkpoints/video_mistral_checkpoint_last.pth" # set the checkpoint to start the training from
+  llama_model: "meta-llama/Llama-2-7b-chat-hf"
+  ckpt: "checkpoints/video_llama_checkpoint_best.pth" # set the checkpoint to start the training from
   use_grad_checkpoint: True
   chat_template: True
   lora_r: 64
   lora_alpha: 16
   length: 50
   use_grad_checkpoint_llm: True
-  max_context_len: 3600 #7200
+  max_context_len: 3600
+  token_pooling: True
 
 
 datasets:
-  engagenet: #99378 row  - 13224 video
+  engagenet: # 15938
     batch_size: 1
     vis_processor:
       train:
@@ -28,8 +29,17 @@ datasets:
     text_processor:
       train:
         name: "blip_caption"
-    sample_ratio: 200
-
+    sample_ratio: 100
+  # webvid: # 42387
+  #   batch_size: 4
+  #   vis_processor:
+  #     train:
+  #       name: "blip2_image_train"
+  #       image_size: 224
+  #   text_processor:
+  #     train:
+  #       name: "blip_caption"
+  #   sample_ratio: 50
 
 run:
   task: image_text_pretrain
@@ -42,11 +52,11 @@ run:
   weight_decay: 0.05
   max_epoch: 50
   num_workers: 16
-  warmup_steps: 875
-  iters_per_epoch: 875
+  warmup_steps: 1000
+  iters_per_epoch: 1000
 
   seed: 42
-  output_dir: "training_output/engagenet/mistral"
+  output_dir: "training_output/engagenet/llama2"
 
   amp: True
   resume_ckpt_path: null
