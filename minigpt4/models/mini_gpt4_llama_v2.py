@@ -132,17 +132,6 @@ class MiniGPT4_llama_v2(Blip2Base):
 
         print("self.low_resource",self.low_resource)
         if self.low_resource:
-            # self.llama_model = llm_model.from_pretrained(
-            #     llama_model,
-            #     torch_dtype=torch.float16,
-            #     # torch_dtype = torch.bfloat16,
-            #     load_in_8bit=True,
-            #     # device_map = "balanced"
-            #     # device_map="auto",
-            #     device_map={'':torch.cuda.current_device()},
-            #     # device_map={'':0}
-                
-            # )
             self.llama_model = llm_model.from_pretrained(
                 llama_model,               
                 device_map={'':torch.cuda.current_device()},

@@ -19,6 +19,13 @@ from tqdm import tqdm
 import json
 import ast
 import time
+from utils import init_logger
+
+program = os.path.basename(__file__)
+if os.path.exists(f"logs/{os.path.splitext(program)[0]}.log"):
+    os.remove(f"logs/{os.path.splitext(program)[0]}.log")
+logger = init_logger(program)
+
 
 def eval_parser():
     parser = argparse.ArgumentParser(description="Demo")
@@ -51,7 +58,7 @@ def prepare_texts(texts, conv_temp, template='<Img><ImageHere></Img>', lengths=N
 
 
 def init_model(args):
-    print('Initialization Model')
+    logger.info('Initialization Model')
     cfg = Config(args)
     cfg.model_cfg.ckpt = args.ckpt
     cfg.model_cfg.lora_r = args.lora_r
@@ -65,9 +72,9 @@ def init_model(args):
 #     import pudb; pudb.set_trace()
     key = list(cfg.datasets_cfg.keys())[0]
     vis_processor_cfg = cfg.datasets_cfg.get(key).vis_processor.train
-    print(vis_processor_cfg)
+    logger.info(vis_processor_cfg)
     vis_processor = registry.get_processor_class(vis_processor_cfg.name).from_config(vis_processor_cfg)
-    print('Initialization Finished')
+    logger.info('Initialization Finished')
     return model, vis_processor
 
 def computeIoU(bbox1, bbox2):
@@ -93,11 +100,10 @@ def eval_bleu(results):
         bleus2.append(sentence_bleu([gt.split()], pred.split(), weights=(0.5,0.5,0,0)))
         bleus3.append(sentence_bleu([gt.split()], pred.split(), weights=(0.33,0.33,0.33,0)))
         bleus4.append(sentence_bleu([gt.split()], pred.split()))
-    # print(np.mean(bleus1),np.mean(bleus2),np.mean(bleus3),np.mean(bleus4),flush=True)
+    # logger.info(np.mean(bleus1),np.mean(bleus2),np.mean(bleus3),np.mean(bleus4),flush=True)
     return {'bleu1':np.mean(bleus1),'bleu2':np.mean(bleus2),'bleu3':np.mean(bleus3),'bleu4':np.mean(bleus4)}
 
-# Create a Cider object
-cider_scorer = Cider()
+
 def eval_cider(pred_result,gt_result):
     # Compute CIDEr scores
     mean_cider_scores, cider_scores = cider_scorer.compute_score(gt_result, pred_result)
@@ -108,7 +114,6 @@ def eval_cider(pred_result,gt_result):
     return {'mean_cider_scores':mean_cider_scores,'cider_scores':cider_scores_dict}
 
 
-openai.api_key_path = "/home/ataallka/chatgpt_api.txt"
 
 
 def chat_gpt_eval(results,output_path):
@@ -151,8 +156,8 @@ def chat_gpt_eval(results,output_path):
                     json.dump([out], f)
                 avg_chatgpt_score+=float(response.choices[0].message['content'])
             except Exception as e:
-                print("chat gpt error",e)
-        print ("Finished chat gpt evaluation in trial",trial)
+                logger.info("chat gpt error",e)
+        logger.info ("Finished chat gpt evaluation in trial",trial)
         trial+=1
         length_output_path=len(os.listdir(output_path))
     return results,avg_chatgpt_score/len(results)
@@ -193,7 +198,7 @@ def GPT4_answer(question, answer,pred):
             response_dict = ast.literal_eval(response_message)
             return response_dict
         except Exception as e:
-            print(f"Error : {e}")
+            logger.info(f"Error : {e}")
             return None
 def GPT4_evaluation(val_result):
     scores=[]
@@ -213,12 +218,16 @@ def GPT4_evaluation(val_result):
             continue
     avg_score=sum(scores)/len(scores)
     accuracy=(yes_count/(yes_count+no_count))*100
-    print(f"chatgpt score: {avg_score} accuracy: {accuracy}")
+    logger.info(f"chatgpt score: {avg_score} accuracy: {accuracy}")
     return avg_score,accuracy
 
+if __name__ == "__main__":
+    openai.api_key_path = "/home/ataallka/chatgpt_api.txt"
+    # Create a Cider object
+    cider_scorer = Cider()
 # with open('results/ckpt_15_res89_res32_Video_validation_Dataset_subtitles.json','r') as f:
 #     results = json.load(f)
 # t1=time.time()
 # avg_score,accuracy=GPT4_evaluation(results)
-# print(f"chatgpt score: {avg_score} accuracy: {accuracy}")
-# print(f"Time taken: {time.time()-t1}")
+# logger.info(f"chatgpt score: {avg_score} accuracy: {accuracy}")
+# logger.info(f"Time taken: {time.time()-t1}")

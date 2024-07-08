@@ -9,7 +9,7 @@
 #SBATCH --cpus-per-task=16
 ## run the application:
 job_name="test" # Name of the experiment
-cfg_path="train_configs/224_v2_mistral_engagenet_stage_2.yaml" # "/home/tony/MiniGPT4-video/train_configs/224_v2_llama2_engagenet_stage_2.yaml" #
+cfg_path="/home/tony/MiniGPT4-video/train_configs/224_v2_llama2_engagenet_stage_2.yaml" #"train_configs/224_v2_mistral_engagenet_stage_2.yaml" # "/home/tony/MiniGPT4-video/train_configs/224_v2_llama2_engagenet_stage_2.yaml" #
 number_of_gpus=2 # number of gpus
 # cd ../../
 

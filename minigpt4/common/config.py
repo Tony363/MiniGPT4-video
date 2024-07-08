@@ -7,11 +7,17 @@
 
 import logging
 import json
+import os
 from typing import Dict
 
 from omegaconf import OmegaConf
 from minigpt4.common.registry import registry
+from utils import init_logger
 
+program = os.path.basename(__file__)
+if os.path.exists(f"logs/{os.path.splitext(program)[0]}.log"):
+    os.remove(f"logs/{os.path.splitext(program)[0]}.log")
+logger = init_logger(program)
 
 class Config:
     def __init__(self, args):
@@ -68,9 +74,9 @@ class Config:
 
         assert model_type is not None, "Missing model_type."
 
-        print("--------------")
-        print("model arch",model.arch)
-        print("model cls",model_cls)
+        logger.info("--------------")
+        logger.info(f"model arch {model.arch}")
+        logger.info(f"model cls {model_cls}")
 
         model_config_path = model_cls.default_config_path(model_type=model_type)
 
@@ -100,7 +106,7 @@ class Config:
 
         for dataset_name in datasets:
 
-            print("dataset name", dataset_name)
+            logger.info(f"dataset name {dataset_name}")
             builder_cls = registry.get_builder_class(dataset_name)
 
             dataset_config_type = datasets[dataset_name].get("type", "default")
@@ -261,7 +267,7 @@ class ConfigValidator:
 
     def print_help(self):
         # display help message
-        print(self.format_help())
+        logger.info(self.format_help())
 
 
 def create_runner_config_validator():

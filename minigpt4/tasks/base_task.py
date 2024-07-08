@@ -84,6 +84,7 @@ class BaseTask:
 
     def before_evaluation(self, model, dataset, **kwargs):
         model.before_evaluation(dataset=dataset, task_type=type(self))
+        
     def chatgpt_eval(self,question, answer,pred):
         try:
             # Compute the correctness score

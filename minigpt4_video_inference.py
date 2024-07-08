@@ -19,16 +19,23 @@ import torch
 import random
 import numpy as np
 import torch.backends.cudnn as cudnn
+import yaml 
+from utils import init_logger
+
+program = os.path.basename(__file__)
+if os.path.exists(f"logs/{os.path.splitext(program)[0]}.log"):
+    os.remove(f"logs/{os.path.splitext(program)[0]}.log")
+logger = init_logger(program)
 
 def prepare_input(vis_processor,video_path,subtitle_path,instruction):  
     cap = cv2.VideoCapture(video_path)
     if subtitle_path is not None: 
         # Load the VTT subtitle file
         vtt_file = webvtt.read(subtitle_path) 
-        print("subtitle loaded successfully")  
+        logger.info("subtitle loaded successfully")  
         clip = VideoFileClip(video_path)
         total_num_frames = int(clip.duration * clip.fps)
-        # print("Video duration = ",clip.duration)
+        # logger.info("Video duration = ",clip.duration)
         clip.close()
     else :
         # calculate the total number of frames in the video using opencv        
@@ -84,6 +91,7 @@ def prepare_input(vis_processor,video_path,subtitle_path,instruction):
     images = torch.stack(images)
     instruction = img_placeholder + '\n' + instruction
     return images,instruction
+
 def extract_audio(video_path, audio_path):
     video_clip = mp.VideoFileClip(video_path)
     audio_clip = video_clip.audio
@@ -97,19 +105,19 @@ def generate_subtitles(video_path):
         return f"workspace/inference_subtitles/{video_id}"+'.vtt'
     try:
         extract_audio(video_path,audio_path)
-        print("successfully extracted")
+        logger.info("successfully extracted")
         os.system(f"whisper {audio_path}  --language English --model large --output_format vtt --output_dir workspace/inference_subtitles")
         # remove the audio file
         os.system(f"rm {audio_path}")
-        print("subtitle successfully generated")  
+        logger.info("subtitle successfully generated")  
         return f"workspace/inference_subtitles/{video_id}"+'.vtt'
     except Exception as e:
-        print("error",e)
-        print("error",video_path)
+        logger.info("error",e)
+        logger.info("error",video_path)
         return None
     
 
-def run (video_path,instruction,model,vis_processor,gen_subtitles=True):
+def run (video_path,instruction,model,vis_processor,max_new_tokens,gen_subtitles=True):
     if gen_subtitles:
         subtitle_path=generate_subtitles(video_path)
     else :
@@ -125,7 +133,7 @@ def run (video_path,instruction,model,vis_processor,gen_subtitles=True):
     conv.append_message(conv.roles[0], prepared_instruction)
     conv.append_message(conv.roles[1], None)
     prompt = [conv.get_prompt()]
-    answers = model.generate(prepared_images, prompt, max_new_tokens=args.max_new_tokens, do_sample=True, lengths=[length],num_beams=1)
+    answers = model.generate(prepared_images, prompt, max_new_tokens=max_new_tokens, do_sample=True, lengths=[length],num_beams=1)
     return answers[0]
 
   
@@ -147,7 +155,7 @@ def get_arguments():
                 "change to --cfg-options instead.",
     )
     return parser.parse_args()
-args=get_arguments()
+
 def setup_seeds(seed):
     random.seed(seed)
     np.random.seed(seed)
@@ -156,25 +164,27 @@ def setup_seeds(seed):
     cudnn.benchmark = False
     cudnn.deterministic = True
 
-import yaml 
-with open('test_configs/llama2_test_config.yaml') as file:
-    config = yaml.load(file, Loader=yaml.FullLoader)
-seed=config['run']['seed']
-print("seed",seed)
 
-model, vis_processor = init_model(args)
-conv = CONV_VISION.copy()
-conv.system = ""
-inference_subtitles_folder="inference_subtitles"
-os.makedirs(inference_subtitles_folder,exist_ok=True)
-existed_subtitles={}
-for sub in os.listdir(inference_subtitles_folder):
-    existed_subtitles[sub.split('.')[0]]=True
 
 if __name__ == "__main__":
+    args=get_arguments()
+    with open('test_configs/llama2_test_config.yaml') as file:
+        config = yaml.load(file, Loader=yaml.FullLoader)
+    seed=config['run']['seed']
+    logger.info("seed",seed)
+
+    model, vis_processor = init_model(args)
+    conv = CONV_VISION.copy()
+    conv.system = ""
+    inference_subtitles_folder="inference_subtitles"
+    os.makedirs(inference_subtitles_folder,exist_ok=True)
+    existed_subtitles={}
+    for sub in os.listdir(inference_subtitles_folder):
+        existed_subtitles[sub.split('.')[0]]=True
+        
     video_path=args.video_path
     instruction=args.question
     add_subtitles=args.add_subtitles
     # setup_seeds(seed)
     pred=run(video_path,instruction,model,vis_processor,gen_subtitles=add_subtitles)
-    print(pred)
+    logger.info(pred)

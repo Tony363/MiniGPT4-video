@@ -8,7 +8,7 @@ model:
   image_size: 224
   end_sym: "</s>"
   llama_model: "mistralai/Mistral-7B-Instruct-v0.2"
-  ckpt: "/home/tony/MiniGPT4-video/minigpt4/training_output/engagenet/mistral/202406160507/checkpoint_29.pth" 
+  ckpt: "/home/tony/MiniGPT4-video/minigpt4/training_output/engagenet/mistral/202406160507/checkpoint_49.pth" 
   #"checkpoints/video_mistral_all_checkpoint_last.pth"
   use_grad_checkpoint: True
   chat_template: True
@@ -36,3 +36,4 @@ run:
   task: image_text_pretrain
   seed: 42
   amp: True
+  device: "cuda:0"
