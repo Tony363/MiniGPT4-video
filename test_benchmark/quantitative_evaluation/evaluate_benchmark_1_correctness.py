@@ -4,7 +4,7 @@ import argparse
 import json
 import ast
 from multiprocessing.pool import Pool
-
+from dotenv import load_dotenv
 
 def parse_args():
     parser = argparse.ArgumentParser(description="question-answer-generation-using-gpt-3")
@@ -119,7 +119,9 @@ def main():
         prediction_set[id] = qa_set
 
     # Set the OpenAI API key.
-    openai.api_key = args.api_key
+    load_dotenv()
+    api_key = os.getenv("API_KEY")
+    openai.api_key = api_key
     num_tasks = args.num_tasks
 
     # While loop to ensure that all captions are processed.
