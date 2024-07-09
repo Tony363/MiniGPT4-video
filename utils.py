@@ -26,7 +26,7 @@ def init_logger(
 
     # Create formatter and add it to the handlers
     formatter = logging.Formatter(
-        '[%(name)s|%(levelname)s|%(asctime)s] %(message)s',
+        '[%(name)s | %(levelname)s | %(asctime)s] %(message)s',
         datefmt="%Y-%m-%d"
     )
     fh.setFormatter(formatter)
@@ -38,6 +38,3 @@ def init_logger(
     logger.info("Initializing ok.")
 
     return logger
-
-program = os.path.basename(__file__)
-logger = init_logger(program)

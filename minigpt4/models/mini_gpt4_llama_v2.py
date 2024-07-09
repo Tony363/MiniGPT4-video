@@ -26,8 +26,12 @@ import time
 import numpy as np
 
 from minigpt4.models import policies
-
-
+from utils import init_logger
+import os
+program = os.path.basename(__file__)
+if os.path.exists(f"logs/{os.path.splitext(program)[0]}.log"):
+    os.remove(f"logs/{os.path.splitext(program)[0]}.log")
+logger = init_logger(program)
 @registry.register_model("mini_gpt4_llama_v2")
 class MiniGPT4_llama_v2(Blip2Base):
     """
@@ -70,18 +74,18 @@ class MiniGPT4_llama_v2(Blip2Base):
         super().__init__()
         if "Mistral" in llama_model:
             from minigpt4.models.modeling_mistral import MistralForCausalLM as llm_model
-            print("Mistral model")
+            logger.info("Mistral model")
             self.model_type = "Mistral"
         else:
             from minigpt4.models.modeling_llama_v2 import LlamaForCausalLM as llm_model
-            print("Llama model")
+            logger.info("Llama model")
             self.model_type = "Llama"
         self.tokenizer = self.init_tokenizer()
         self.low_resource = low_resource
         self.token_pooling = token_pooling
         self.remove_template = remove_template
 
-        print("token pooling", self.token_pooling)
+        logger.info(f"token pooling {self.token_pooling}")
 
 
         self.use_grad_checkpoint_llm = use_grad_checkpoint_llm
@@ -90,7 +94,7 @@ class MiniGPT4_llama_v2(Blip2Base):
 
         if freeze_vit:
             # vit_precision="fp32"
-            print("vit precision", vit_precision)
+            logger.info(f"vit precision {vit_precision}")
             self.visual_encoder, self.ln_vision = self.init_vision_encoder(
                 vit_model, img_size, drop_path_rate, use_grad_checkpoint, vit_precision
             )
@@ -103,7 +107,7 @@ class MiniGPT4_llama_v2(Blip2Base):
             self.ln_vision = self.ln_vision.eval()
             self.ln_vision.train = disabled_train
             logging.info("freeze vision encoder")
-            print("freeze the vision encoder")
+            logger.info("freeze the vision encoder")
 
         else:
             vit_precision="fp32"
@@ -111,14 +115,14 @@ class MiniGPT4_llama_v2(Blip2Base):
                 vit_model, img_size, drop_path_rate, use_grad_checkpoint, vit_precision
             )
 
-            print("unfreeze the vision encoder")
+            logger.info("unfreeze the vision encoder")
 
-        print('Loading VIT Done')
+        logger.info('Loading VIT Done')
 
-        # print("visual encoder shape", self.visual_encoder.pos_embed.shape)
+        # logger.info("visual encoder shape", self.visual_encoder.pos_embed.shape)
         # assert False
 
-        print('Loading LLAMA')
+        logger.info('Loading LLAMA')
 
 
         self.B_SYS, self.E_SYS = "<<SYS>>\n", "\n<</SYS>>\n\n"
@@ -130,7 +134,7 @@ class MiniGPT4_llama_v2(Blip2Base):
 
 
 
-        print("self.low_resource",self.low_resource)
+        logger.info(f"self.low_resource {self.low_resource}")
         if self.low_resource:
             self.llama_model = llm_model.from_pretrained(
                 llama_model,               
@@ -173,7 +177,7 @@ class MiniGPT4_llama_v2(Blip2Base):
         if self.use_grad_checkpoint_llm:
             self.llama_model.gradient_checkpointing_enable()
        
-        print('Loading LLAMA Done')
+        logger.info('Loading LLAMA Done')
 
 
         if self.token_pooling:
@@ -193,8 +197,8 @@ class MiniGPT4_llama_v2(Blip2Base):
                 raw_prompts = f.read().splitlines()
             filted_prompts = [raw_prompt for raw_prompt in raw_prompts if "<ImageHere>" in raw_prompt]
             self.prompt_list = [prompt_template.format(p) for p in filted_prompts]
-            print('Load {} training prompts'.format(len(self.prompt_list)))
-            print('Prompt Example \n{}'.format(random.choice(self.prompt_list)))
+            logger.info('Load {} training prompts'.format(len(self.prompt_list)))
+            logger.info('Prompt Example \n{}'.format(random.choice(self.prompt_list)))
         else:
             self.prompt_list = []
 
@@ -727,6 +731,12 @@ class MiniGPT4_llama_v2(Blip2Base):
         return pred_ans
 
     def embed_tokens(self, token_ids):
+        # TODO TEST THIS
+        emb_dev = next(self.llama_model.base_model.model.model.embed_tokens.parameters()).device
+        token_ids = token_ids.to(self.device)
+        # logger.info(f"{emb_dev} - {self.device} - {token_ids.device}")
+        if emb_dev != self.device:
+            self.llama_model.base_model.model.model.embed_tokens.to(self.device)
         try:
             embeds = self.llama_model.base_model.model.model.embed_tokens(token_ids)
         except AttributeError:
@@ -790,7 +800,7 @@ class MiniGPT4_llama_v2(Blip2Base):
 
         ckpt_path = cfg.get("ckpt", "")  # load weights of MiniGPT-4
         if ckpt_path:
-            print("Load Minigpt-4-LLM Checkpoint: {}".format(ckpt_path))
+            logger.info("Load Minigpt-4-LLM Checkpoint: {}".format(ckpt_path))
             ckpt = torch.load(ckpt_path, map_location="cpu")
             msg = model.load_state_dict(ckpt['model'], strict=False)
 

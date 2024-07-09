@@ -14,9 +14,16 @@ from utils import init_logger
 def get_arguments():
     """
     python3 inference_engagenet.py\
-        --videos-dir /home/tony/engagenet_val\
+        --videos-dir /home/tony/engagenet_val/videos\
         --cfg-path test_configs/mistral_test_config.yaml\
-        --ckpt /home/tony/MiniGPT4-video/minigpt4/training_output/engagenet/mistral/202406160507/checkpoint_49.pth\
+        --ckpt minigpt4/training_output/engagenet/mistral/202406160507/checkpoint_49.pth\
+        --num-classes 4\
+        --label-path /home/tony/engagenet_labels/validation_engagement_labels.json
+        
+    python3 inference_engagenet.py\
+        --videos-dir /home/tony/engagenet_val/videos\
+        --cfg-path test_configs/llama2_test_config.yaml\
+        --ckpt minigpt4/training_output/engagenet/llama2/202406211922/checkpoint_49.pth\
         --num-classes 4\
         --label-path /home/tony/engagenet_labels/validation_engagement_labels.json
     """
@@ -52,10 +59,10 @@ def get_test_labels(
 )->dict:
     label = {}
     classes = np.array([
-        [0,'Not-Engaged',"The student is Not-Engaged."],
-        [1,'Barely-Engaged',"The student is Barely-Engaged."],
-        [2,'Engaged',"The student is Engaged."],
-        [4,'Highly-Engaged','The student is Highly-Engaged.']
+        'Not-Engaged'.lower(),
+        'Barely-Engaged'.lower(),
+        'Engaged'.lower(),
+        'Highly-Engaged'.lower()
     ])
     with open(label_path,'r') as f:
         captions = json.load(f)
@@ -65,15 +72,15 @@ def get_test_labels(
                 ('Barely-Engaged'.lower() in pair['a'].lower()),
                 ('Engaged'.lower() in pair['a'].lower()),
                 ('Highly-Engaged'.lower() in pair['a'].lower())
-            ]][0].tolist()
+            ]][0]
     save = open(os.path.join('/'.join(label_path.split('/')[:-1]),'eval_labels.json'),'w')
     json.dump(label,save,indent=4)
     save.close()
-    return label
+    return label,classes
 
 def load_metrics(num_classes:int)->torchmetrics.MetricCollection:
     metrics = torchmetrics.MetricCollection([
-        MulticlassAccuracy(num_classes=num_classes, average="micro"),
+        MulticlassAccuracy(num_classes=num_classes, average="macro"),
         MulticlassPrecision(num_classes=num_classes, average="macro"),
         MulticlassRecall(num_classes=num_classes, average="macro"),
         MulticlassF1Score(num_classes=num_classes, average="macro"),
@@ -88,44 +95,56 @@ def main()->None:
         
     setup_seeds(config['run']['seed'])
     logger.info("SEED - {}".format(config['run']['seed']))
-    label = get_test_labels(
+    label,classes = get_test_labels(
         label_path=args.label_path
     )
     num_classes,max_new_tokens = args.num_classes,args.max_new_tokens
-        
     model, vis_processor = init_model(args)
     model.to(config['run']['device'])
     
     metrics = load_metrics(args.num_classes)
     metrics.to(config['run']['device'])
     
-    pred_samples,pred_set = [],{}
+    pred_samples = []
     question = args.question
     inference_samples = len(os.listdir(args.videos_dir))
     pred_table,target_table = torch.zeros(inference_samples).to(config['run']['device']),\
         torch.zeros(inference_samples).to(config['run']['device'])
 
     for sample,vid_path in enumerate(os.listdir(args.videos_dir)):
+        if not ".mp4" in vid_path:
+            continue
         vid_id = vid_path.split(".mp4")[0]
         vid_path = os.path.join(args.videos_dir, vid_path)
-        logger.info("Processing video - {}".format(vid_path))
+        logger.info("Processing video - {}".format(vid_id))
         answer = run(vid_path, question, model, vis_processor,max_new_tokens, gen_subtitles=False)
+        
+        target_table[sample] = np.where(classes == label[vid_id].lower())[0][0]
         pred_table[sample] = target_table[sample]
-        if label[vid_id][1] not in answer.lower():
-            pred_table[sample] = (target_table[sample] - 1) % num_classes
-
-        pred_set['video_name'] = vid_id
-        pred_set['Q'] = question
-        pred_set['A'] = answer
+        
+        logger.info("SAMPLE:{}".format(sample))
+        wrongs = classes[classes != label[vid_id].lower()]
+        for wrong in wrongs:
+            logger.info(f"CHECK: {wrong.lower()} - {answer.lower()} - {wrong.lower() in answer.lower()}")
+            if wrong.lower() in answer.lower():
+                pred_table[sample] = (target_table[sample] - 1) % num_classes
+                continue
+            
+        logger.info(f"CORRECT:{pred_table[sample]} - {target_table[sample]} - {pred_table[sample] == target_table[sample]}")
+        pred_set = {
+            'video_name':vid_id,
+            'Q':question,
+            'A':answer
+        }
         pred_samples.append(pred_set)
     
-    performance = metrics(pred_table, target_table)
+    performance = metrics.forward(pred_table, target_table)
     logger.info(f"ACC - {performance['MulticlassAccuracy']}")
     logger.info(f"PR - {performance['MulticlassPrecision']}")
     logger.info(f"RE - {performance['MulticlassRecall']}")
     logger.info(f"F1 - {performance['MulticlassF1Score']}")
 
-    with open('for_gpt_pred.json','w') as f:
+    with open(f'{args.cfg_configs.split(".yaml")[0]}_eval.json','w') as f:
         json.dump(pred_samples,f,indent=4) 
     return
 
