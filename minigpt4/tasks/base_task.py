@@ -124,6 +124,7 @@ class BaseTask:
         except Exception as e:
             print(f"Error : {e}")
             return None
+        
     def after_evaluation(self, val_result,epoch,**kwargs):
         scores=[]
         yes_count=0

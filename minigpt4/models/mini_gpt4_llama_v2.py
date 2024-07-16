@@ -501,6 +501,10 @@ class MiniGPT4_llama_v2(Blip2Base):
         lengths=None,
         return_video_temporal_features=False,
         img_embeds=None,
+        # TONY ADDED
+        num_return_sequences=1,
+        stopping_criteria=None,
+        pad_token_id=None,
     ):
         '''
             function for generate test use

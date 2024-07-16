@@ -3,8 +3,10 @@ import os
 import argparse
 import json
 import ast
+import torch
+import transformers
 from multiprocessing.pool import Pool
-import time
+from dotenv import load_dotenv
 
 def parse_args():
     parser = argparse.ArgumentParser(description="question-answer-generation-using-gpt-3")
@@ -19,8 +21,8 @@ def parse_args():
 
 def annotate(prediction_set, caption_files, output_dir):
     """
-    Evaluates question and answer pairs using GPT-3 and
-    returns a score for contextual understanding.
+    Evaluates question and answer pairs using GPT-3
+    Returns a score for correctness.
     """
     for file in caption_files:
         key = file[:-5] # Strip file extension
@@ -28,22 +30,86 @@ def annotate(prediction_set, caption_files, output_dir):
         question = qa_set['q']
         answer = qa_set['a']
         pred = qa_set['pred']
+                
+
+        model_id = "unsloth/llama-3-8b-Instruct-bnb-4bit"
+
+        pipeline = transformers.pipeline(
+            "text-generation",
+            model=model_id,
+            model_kwargs={
+                "torch_dtype": torch.float16,
+                "quantization_config": {"load_in_4bit": True},
+                "low_cpu_mem_usage": True,
+            },
+        )
+        
+        messages=[
+            {
+                "role": "system",
+                "content": 
+                    "You are an intelligent chatbot designed for evaluating the factual accuracy of generative outputs for video-based question-answer pairs. "
+                    "Your task is to compare the predicted answer with the correct answer and determine if they are factually consistent. Here's how you can accomplish the task:"
+                    "------"
+                    "##INSTRUCTIONS: "
+                    "- Focus on the factual consistency between the predicted answer and the correct answer. The predicted answer should not contain any misinterpretations or misinformation.\n"
+                    "- The predicted answer must be factually accurate and align with the video content.\n"
+                    "- Consider synonyms or paraphrases as valid matches.\n"
+                    "- Evaluate the factual accuracy of the prediction compared to the answer."
+            },
+            {
+                "role": "user",
+                "content":
+                    "Please evaluate the following video-based question-answer pair:\n\n"
+                    f"Question: {question}\n"
+                    f"Correct Answer: {answer}\n"
+                    f"Predicted Answer: {pred}\n\n"
+                    "Provide your evaluation only as a factual accuracy score where the factual accuracy score is an integer value between 0 and 5, with 5 indicating the highest level of factual consistency. "
+                    "Please generate the response in the form of a Python dictionary string with keys 'score', where its value is the factual accuracy score in INTEGER, not STRING."
+                    "DO NOT PROVIDE ANY OTHER OUTPUT TEXT OR EXPLANATION. Only provide the Python dictionary string. "
+                    "For example, your response should look like this: {''score': 4.8}."
+            }
+        ]
+
+        prompt = pipeline.tokenizer.apply_chat_template(
+                messages,
+                tokenize=False,
+                add_generation_prompt=True
+        )
+
+        terminators = [
+            pipeline.tokenizer.eos_token_id,
+            pipeline.tokenizer.convert_tokens_to_ids("<|eot_id|>")
+        ]
+
+        outputs = pipeline(
+            prompt,
+            max_new_tokens=256,
+            eos_token_id=terminators,
+            do_sample=True,
+            temperature=0.6,
+            top_p=0.9,
+        )
+
+        print(outputs[0]["generated_text"][len(prompt):])
+                
+        
         try:
-            # Compute the contextual understanding score
+            # Compute the correctness score
             completion = openai.ChatCompletion.create(
                 model="gpt-3.5-turbo",
                 messages=[
                     {
                         "role": "system",
-                        "content":
-                            "You are an intelligent chatbot designed for evaluating the contextual understanding of generative outputs for video-based question-answer pairs. "
-                            "Your task is to compare the predicted answer with the correct answer and determine if the generated response aligns with the overall context of the video content. Here's how you can accomplish the task:"
+                        "content": 
+                            "You are an intelligent chatbot designed for evaluating the factual accuracy of generative outputs for video-based question-answer pairs. "
+                            "Your task is to compare the predicted answer with the correct answer and determine if they are factually consistent. Here's how you can accomplish the task:"
                             "------"
                             "##INSTRUCTIONS: "
-                            "- Evaluate whether the predicted answer aligns with the overall context of the video content. It should not provide information that is out of context or misaligned.\n"
-                            "- The predicted answer must capture the main themes and sentiments of the video.\n"
+                            "- Focus on the factual consistency between the predicted answer and the correct answer. The predicted answer should not contain any misinterpretations or misinformation.\n"
+                            "- The predicted answer must be factually accurate and align with the video content.\n"
                             "- Consider synonyms or paraphrases as valid matches.\n"
-                            "- Provide your evaluation of the contextual understanding of the prediction compared to the answer."
+                            "- Evaluate the factual accuracy of the prediction compared to the answer."
                     },
                     {
                         "role": "user",
@@ -52,8 +118,8 @@ def annotate(prediction_set, caption_files, output_dir):
                             f"Question: {question}\n"
                             f"Correct Answer: {answer}\n"
                             f"Predicted Answer: {pred}\n\n"
-                            "Provide your evaluation only as a contextual understanding score where the contextual understanding score is an integer value between 0 and 5, with 5 indicating the highest level of contextual understanding. "
-                            "Please generate the response in the form of a Python dictionary string with keys 'score', where its value is contextual understanding score in INTEGER, not STRING."
+                            "Provide your evaluation only as a factual accuracy score where the factual accuracy score is an integer value between 0 and 5, with 5 indicating the highest level of factual consistency. "
+                            "Please generate the response in the form of a Python dictionary string with keys 'score', where its value is the factual accuracy score in INTEGER, not STRING."
                             "DO NOT PROVIDE ANY OTHER OUTPUT TEXT OR EXPLANATION. Only provide the Python dictionary string. "
                             "For example, your response should look like this: {''score': 4.8}."
                     }
@@ -70,7 +136,7 @@ def annotate(prediction_set, caption_files, output_dir):
 
         except Exception as e:
             print(f"Error processing file '{key}': {e}")
-            time.sleep(2)
+
 
 def main():
     """
@@ -119,6 +185,9 @@ def main():
         prediction_set[id] = qa_set
 
     # Set the OpenAI API key.
+    # load_dotenv()
+    # api_key = os.getenv("API_KEY")
+    # openai.api_key = api_key
     openai.api_key = args.api_key
     num_tasks = args.num_tasks
 
@@ -178,9 +247,26 @@ def main():
         score_sum += score
     average_score = score_sum / count
 
-    print("Average score for contextual understanding:", average_score)
+    print("Average score for correctness:", average_score)
 
 
 if __name__ == "__main__":
+    
+    '''
+    mistral
+    [inference_engagenet.py | INFO | 2024-07-10] F1 - 0.6666666865348816
+    [inference_engagenet.py | INFO | 2024-07-10] ACC - 0.6757702827453613
+    [inference_engagenet.py | INFO | 2024-07-10] PR - 0.7449684739112854
+    [inference_engagenet.py | INFO | 2024-07-10] RE - 0.6757702827453613
+    [inference_engagenet.py | INFO | 2024-07-10] F1 - 0.6665439009666443
+    
+    
+    llama2
+    [inference_engagenet.py | INFO | 2024-07-10] F1 - 0.6666666865348816                                                                                                  
+    [inference_engagenet.py | INFO | 2024-07-10] ACC - 0.6104108095169067                                                                                                 
+    [inference_engagenet.py | INFO | 2024-07-10] PR - 0.6712498664855957                                                                                                  
+    [inference_engagenet.py | INFO | 2024-07-10] RE - 0.6104108095169067                                                                                                  
+    [inference_engagenet.py | INFO | 2024-07-10] F1 - 0.5968020558357239                                                                                                  
+    '''
     main()
 

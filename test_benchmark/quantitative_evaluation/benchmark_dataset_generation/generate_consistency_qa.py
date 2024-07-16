@@ -4,6 +4,7 @@ import argparse
 import warnings
 import json
 import ast
+import time
 from multiprocessing.pool import Pool
 
 # Disable warnings.
@@ -11,6 +12,21 @@ warnings.filterwarnings('ignore')
 
 
 def parse_args():
+    """
+    python3 test_benchmark/quantitative_evaluation/benchmark_dataset_generation/generate_consistency_qa.py\
+        --gt_caption_folder /home/tony/filter_cap_daisee.json\
+        --output_dir /home/tony/minigptv2/gpt_evaluation/daisee_consistency_qas\
+        --output_json /home/tony/minigptv2/gpt_evaluation/consistency_qa_daisee.json\
+        --api_key
+        --num_tasks 1
+        
+    python3 test_benchmark/quantitative_evaluation/benchmark_dataset_generation/generate_consistency_qa.py\
+        --gt_caption_folder /home/tony/filter_cap_raw.json\
+        --output_dir /home/tony/minigptv2/gpt_evaluation/sedraw_consistency_qas\
+        --output_json /home/tony/minigptv2/gpt_evaluation/consistency_qa_raw.json\
+        --api_key 
+        --num_tasks 16
+    """
     parser = argparse.ArgumentParser(description="question-answer-generation-using-gpt-3")
     parser.add_argument("--gt_caption_folder", required=True, help="The path to captions")
     parser.add_argument("--output_dir", required=True, help="The path to save annotation json files.")
@@ -26,7 +42,7 @@ def annotate(gt_file, caption_files, output_dir):
     Generate questions and answers for each caption file using GPT-3.
     """
     for file in caption_files:
-        key = file[:-5] # Strip file extension.
+        key = file[:-5]# Strip file extension.
         caption = gt_file[key]
         try:
             # Generate GPT-3 response.
@@ -66,6 +82,7 @@ def annotate(gt_file, caption_files, output_dir):
                 json.dump(response_dict, f)
         except Exception as e:
             print(f"Error processing file '{key}': {e}")
+            time.sleep(1)
 
 
 def main():
@@ -77,16 +94,22 @@ def main():
 
     # Read ground truth captions.
     gt_captions = {}
-    gt_files = os.listdir(args.gt_caption_folder)
-    for file in gt_files:
-        # Read human-assisted annotations from individual text files.
-        with open(os.path.join(args.gt_caption_folder, file), mode='r', encoding='utf-8-sig') as f:
-            caption = f.read().replace('\n', '').replace('‘', "'").replace('’', "'")
-            video_id = file[:-4]
-            gt_captions[video_id] = caption
+    ann = args.gt_caption_folder    
+    if ann.endswith('.json'):
+        with open(ann, mode='r', encoding='utf-8-sig') as f:
+            labels = json.load(f)
+            for pair in labels['annotations']:
+                gt_captions[pair['image_id']] = pair['caption']
+    else:           
+        gt_files = os.listdir(args.gt_caption_folder)
+        for file in gt_files:
+            # Read human-assisted annotations from individual text files.
+            with open(os.path.join(args.gt_caption_folder, file), mode='r', encoding='utf-8-sig') as f:
+                caption = f.read().replace('\n', '').replace('‘', "'").replace('’', "'")
+                video_id = file[:-4]
+                gt_captions[video_id] = caption
 
     caption_files = [f"{video_id}.json" for video_id in gt_captions.keys()]
-
     output_dir = args.output_dir
     # Generate output directory if not exists.
     if not os.path.exists(output_dir):

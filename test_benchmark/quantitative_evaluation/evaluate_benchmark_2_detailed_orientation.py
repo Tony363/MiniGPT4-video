@@ -4,7 +4,7 @@ import argparse
 import json
 import ast
 from multiprocessing.pool import Pool
-
+import time 
 
 def parse_args():
     parser = argparse.ArgumentParser(description="question-answer-generation-using-gpt-3")
@@ -70,7 +70,7 @@ def annotate(prediction_set, caption_files, output_dir):
 
         except Exception as e:
             print(f"Error processing file '{key}': {e}")
-
+            time.sleep(2)
 
 def main():
     """
