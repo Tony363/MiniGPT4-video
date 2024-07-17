@@ -122,7 +122,7 @@ def main()->None:
         
         logger.info("SAMPLE:{} {} - {}".format(sample,label[vid_id],answer))
         target_table[0] = np.where(classes == label[vid_id])[0][0]
-        pred_table[0] = target_table[0] if label[vid_id].split(' ')[-1] == answer.lower() else (target_table[check] - 1) % num_classes
+        pred_table[0] = target_table[0] if label[vid_id].split(' ')[-1] in answer.lower() else (target_table[0] - 1) % num_classes
         logger.info(f"CORRECT:{pred_table[0]} - {target_table[0]} - {pred_table[0] == target_table[0]}")
 
         wrongs = classes[classes != label[vid_id]]
