@@ -33,6 +33,10 @@ def get_arguments():
     parser.add_argument("--cfg-path", help="path to configuration file.",default="test_configs/llama2_test_config.yaml")
     parser.add_argument("--ckpt", type=str,default='checkpoints/video_llama_checkpoint_last.pth', help="path to checkpoint")
     parser.add_argument("--videos-dir", type=str,required=True, help="location of videos directory")
+    parser.add_argument("--num-classes", type=int, help="# of classes",default=4)
+    parser.add_argument("--max_new_tokens", type=int, default=512, help="max number of generated tokens")
+    parser.add_argument("--lora_r", type=int, default=64, help="lora rank of the model")
+    parser.add_argument("--lora_alpha", type=int, default=16, help="lora alpha")
     parser.add_argument("--question",
                         type=str, 
                         default="This is a student performing tasks in an online setting. Choose whether the student is 'not engaged','barely engaged', 'engaged', or 'highly engaged'.",
@@ -43,16 +47,20 @@ def get_arguments():
         default='/home/tony/engagenet_labels/validation_engagement_labels.json',
         help="path to EngageNet Labels"
     )
-    parser.add_argument("--num-classes", type=int, help="# of classes",default=4)
-    parser.add_argument("--max_new_tokens", type=int, default=512, help="max number of generated tokens")
-    parser.add_argument("--lora_r", type=int, default=64, help="lora rank of the model")
-    parser.add_argument("--lora_alpha", type=int, default=16, help="lora alpha")
+
     parser.add_argument(
         "--options",
         nargs="+",
         help="override some settings in the used config, the key-value pair "
                 "in xxx=yyy format will be merged into config file (deprecate), "
                 "change to --cfg-options instead.",
+    )
+    parser.add_argument(
+        '-consistency-qa','--consistency-qa', 
+        type=str,
+        default='consistency-qa.json',
+        help='json of qa pairs', 
+        required=True
     )
     parser.add_argument("--gpu-id", type=int, default=0, help="specify the gpu to load the model.")
 
@@ -94,6 +102,9 @@ def main()->None:
     with open(args.cfg_path) as file:
         config = yaml.load(file, Loader=yaml.FullLoader)
         
+    with open(args.consistency_qa,'r') as f:
+        qa_pairs = json.load(f)
+        
     setup_seeds(config['run']['seed'])
     logger.info("SEED - {}".format(config['run']['seed']))
     label,classes = get_test_labels(
@@ -118,8 +129,12 @@ def main()->None:
         vid_id = vid_path.split(".mp4")[0]
         vid_path = os.path.join(args.videos_dir, vid_path)
         logger.info("Processing video - {}".format(vid_id))
-        answer = run(vid_path, question, model, vis_processor,max_new_tokens, gen_subtitles=False)
         
+        q1,q2 = qa_pairs[vid_id]['Q1'],qa_pairs[vid_id]['Q2']
+        answer = run(vid_path, question, model, vis_processor,max_new_tokens, gen_subtitles=False)
+        a1 = run(vid_path, q1, model, vis_processor,max_new_tokens, gen_subtitles=False)
+        a2 = run(vid_path, q2, model, vis_processor,max_new_tokens, gen_subtitles=False)
+
         logger.info("SAMPLE:{} {} - {}".format(sample,label[vid_id],answer))
         target_table[0] = np.where(classes == label[vid_id])[0][0]
         pred_table[0] = target_table[0] if label[vid_id].split(' ')[-1] in answer.lower() else (target_table[0] - 1) % num_classes
@@ -145,6 +160,16 @@ def main()->None:
             'Q':question,
             'A':label[vid_id],
             'pred':answer
+        }
+        pred_set:dict={
+            'video_name':vid_id,
+            'Q':question,
+            'Q1': q1,
+            'Q2':q2,
+            'A':label[vid_id][-1],
+            'pred':answer,
+            'pred1':a1,
+            'pred2':a2
         }
         pred_samples.append(pred_set)
     
