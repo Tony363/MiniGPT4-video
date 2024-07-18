@@ -26,6 +26,14 @@ def parse_args():
         --output_json /home/tony/minigptv2/gpt_evaluation/consistency_qa_raw.json\
         --api_key 
         --num_tasks 16
+        
+        
+    python3 test_benchmark/quantitative_evaluation/benchmark_dataset_generation/generate_consistency_qa.py\
+        --gt_caption_folder /home/tony/engagenet_labels/validation_engagement_labels.json\
+        --output_dir /home/tony/MiniGPT4-video/gpt_evaluation/engagenet_consistency_qas\
+        --output_json /home/tony/MiniGPT4-video/gpt_evaluation/consistency_qa_engagenet.json\
+        --num_tasks 16 \
+        --api_key 
     """
     parser = argparse.ArgumentParser(description="question-answer-generation-using-gpt-3")
     parser.add_argument("--gt_caption_folder", required=True, help="The path to captions")
@@ -94,8 +102,13 @@ def main():
 
     # Read ground truth captions.
     gt_captions = {}
-    ann = args.gt_caption_folder    
-    if ann.endswith('.json'):
+    ann = args.gt_caption_folder 
+    if ann.endswith('.json') and 'engagement' in ann:
+        with open(ann, mode='r', encoding='utf-8-sig') as f:
+            labels = json.load(f)
+            for pair in labels:
+                gt_captions[pair['video_id']] = pair['a']   
+    elif ann.endswith('.json'):
         with open(ann, mode='r', encoding='utf-8-sig') as f:
             labels = json.load(f)
             for pair in labels['annotations']:
