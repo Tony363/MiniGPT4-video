@@ -149,8 +149,9 @@ def main()->None:
     metrics.to(config['run']['device'])
     
     pred_samples = []
-    pred_table,target_table = torch.zeros(num_classes).to(config['run']['device']),\
-        torch.zeros(num_classes).to(config['run']['device'])
+    samples = len(os.listdir(args.videos_dir))
+    pred_table,target_table = torch.zeros(samples).to(config['run']['device']),\
+        torch.zeros(samples).to(config['run']['device'])
 
     for sample,vid_path in enumerate(os.listdir(args.videos_dir)):
         if not ".mp4" in vid_path:
@@ -200,10 +201,10 @@ def main()->None:
         pred_samples.append(pred_set)
     
     performance = metrics.compute()
-    logger.info(f"ACC - {performance['MulticlassAccuracy']}")
-    logger.info(f"PR - {performance['MulticlassPrecision']}")
-    logger.info(f"RE - {performance['MulticlassRecall']}")
-    logger.info(f"F1 - {performance['MulticlassF1Score']}")
+    logger.info(f"FINAL ACC - {performance['MulticlassAccuracy']}")
+    logger.info(f"FINAL PR - {performance['MulticlassPrecision']}")
+    logger.info(f"FINAL RE - {performance['MulticlassRecall']}")
+    logger.info(f"FINAL F1 - {performance['MulticlassF1Score']}")
     metrics.reset()
     
     model_card = args.cfg_path.split(".yaml")[0].split(os.sep)[-1]
