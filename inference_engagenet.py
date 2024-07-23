@@ -7,7 +7,8 @@ import torch
 import torchmetrics
 from torchmetrics.classification import MulticlassAccuracy, MulticlassPrecision, MulticlassRecall,MulticlassF1Score
 from minigpt4.common.eval_utils import prepare_texts, init_model
-from minigpt4_video_inference import run,setup_seeds
+from minigpt4_video_inference import run,setup_seeds,prepare_input
+from minigpt4.conversation.conversation import CONV_VISION
 from utils import init_logger
 
 
@@ -16,18 +17,21 @@ def get_arguments():
     python3 inference_engagenet.py\
         --videos-dir /home/tony/engagenet_val/videos\
         --cfg-path test_configs/mistral_test_config.yaml\
-        --ckpt minigpt4/training_output/engagenet/mistral/202406160507/checkpoint_49.pth\
+        --ckpt /home/tony/nvme2tb/mistral_first_finetune.pth\
         --num-classes 4\
-        --gpu-id 1\
-        --label-path /home/tony/engagenet_labels/validation_engagement_labels.json
+        --gpu-id 0\
+        --label-path /home/tony/engagenet_labels/validation_engagement_labels.json\
+        --consistency-qa /home/tony/MiniGPT4-video/gpt_evaluation/consistency_qa_engagenet.json
         
     python3 inference_engagenet.py\
         --videos-dir /home/tony/engagenet_val/videos\
         --cfg-path test_configs/llama2_test_config.yaml\
-        --ckpt minigpt4/training_output/engagenet/llama2/202406211922/checkpoint_49.pth\
+        --ckpt /home/tony/MiniGPT4-video/checkpoints/video_llama_checkpoint_best.pth\
         --num-classes 4\
-        --gpu-id 1\
-        --label-path /home/tony/engagenet_labels/validation_engagement_labels.json
+        --gpu-id 0\
+        --label-path /home/tony/engagenet_labels/validation_engagement_labels.json\
+        --consistency-qa /home/tony/MiniGPT4-video/gpt_evaluation/consistency_qa_engagenet.json
+
     """
     parser = argparse.ArgumentParser(description="Inference parameters")
     parser.add_argument("--cfg-path", help="path to configuration file.",default="test_configs/llama2_test_config.yaml")
@@ -39,8 +43,24 @@ def get_arguments():
     parser.add_argument("--lora_alpha", type=int, default=16, help="lora alpha")
     parser.add_argument("--question",
                         type=str, 
-                        default="This is a student performing tasks in an online setting. Choose whether the student is 'not engaged','barely engaged', 'engaged', or 'highly engaged'.",
-                        help="question to ask")
+                        default="Choose whether the student is 'not engaged','barely engaged', 'engaged', or 'highly engaged'.",
+                        help="question to ask"
+    )
+    parser.add_argument(
+       "--sys_instruct",
+        type=str, 
+        default="""
+<s>[INST]
+You are an intelligent chatbot that looks at a series of images and chooses between 'not engaged', 'barely engaged', 'engaged', or 'highly engaged'.
+The only choices are from following responses:
+    {'answer':0} for not-engaged
+    {'answer':1} for barely-engaged
+    {'answer':2} for engaged
+    {'answer':3} for highly-engaged
+[/INST]</s>
+""",
+        help="system prompt" 
+    )
     parser.add_argument(
         "--label-path", 
         type=str, 
@@ -71,19 +91,25 @@ def get_test_labels(
 )->dict:
     label = {}
     classes = np.array([
-        'The student is Not-Engaged.'.lower(),
-        'The student is Barely-engaged.'.lower(),
-        'The student is Engaged.'.lower(),
-        'The student is Highly-Engaged.'.lower()
+        ['Not-Engaged'],
+        ['Barely-engaged'],
+        ['Engaged'],
+        ['Highly-Engaged']
     ])
+    mapping = {
+        'Not-Engaged':0,
+        'Barely-engaged':1,
+        'Engaged':2,
+        'Highly-Engaged':3
+    }
     with open(label_path,'r') as f:
         captions = json.load(f)
         for pair in captions:
-            label[pair['video_id']] = classes[classes == pair['a'].lower()][0]
+            label[pair['video_id']] = pair['a']
     save = open(os.path.join('/'.join(label_path.split('/')[:-1]),'eval_labels.json'),'w')
     json.dump(label,save,indent=4)
     save.close()
-    return label,classes
+    return label,classes,mapping
 
 def load_metrics(num_classes:int)->torchmetrics.MetricCollection:
     metrics = torchmetrics.MetricCollection([
@@ -97,7 +123,12 @@ def load_metrics(num_classes:int)->torchmetrics.MetricCollection:
 def main()->None:
     logger.info("Starting Inference")
     args = get_arguments()
-    os.environ["CUDA_VISIBLE_DEVICES"] = f"{args.gpu_id}"
+    # os.environ["CUDA_VISIBLE_DEVICES"] = f"{args.gpu_id}"
+    question,sys_instruct = args.question,args.sys_instruct
+
+    conv = CONV_VISION.copy()
+    conv.system = sys_instruct
+    prompt = None
     
     with open(args.cfg_path) as file:
         config = yaml.load(file, Loader=yaml.FullLoader)
@@ -107,7 +138,7 @@ def main()->None:
         
     setup_seeds(config['run']['seed'])
     logger.info("SEED - {}".format(config['run']['seed']))
-    label,classes = get_test_labels(
+    label,classes,mapping = get_test_labels(
         label_path=args.label_path
     )
     num_classes,max_new_tokens = args.num_classes,args.max_new_tokens
@@ -118,7 +149,6 @@ def main()->None:
     metrics.to(config['run']['device'])
     
     pred_samples = []
-    question = args.question
     pred_table,target_table = torch.zeros(num_classes).to(config['run']['device']),\
         torch.zeros(num_classes).to(config['run']['device'])
 
@@ -130,24 +160,26 @@ def main()->None:
         vid_path = os.path.join(args.videos_dir, vid_path)
         logger.info("Processing video - {}".format(vid_id))
         
+        prepared_images,prepared_instruction = prepare_input(vis_processor,vid_path,None,question)
+        if sample == 0:
+            conv.append_message(conv.roles[0], prepared_instruction)
+            conv.append_message(conv.roles[1], None)
+            prompt = [conv.get_prompt()]
+        
+        
+        pred_ans = model.predict_class({
+            "image":prepared_images.unsqueeze(0),
+            "instruction_input":[prepared_instruction],
+            "choices":classes,
+            "num_choices":[num_classes],
+            "length":[45],
+        })
+        
+        pred_table[sample],target_table[sample] = mapping[pred_ans[0]],mapping[label[vid_id]]         
+        
         q1,q2 = qa_pairs[vid_id]['Q1'],qa_pairs[vid_id]['Q2']
-        answer = run(vid_path, question, model, vis_processor,max_new_tokens, gen_subtitles=False)
         a1 = run(vid_path, q1, model, vis_processor,max_new_tokens, gen_subtitles=False)
         a2 = run(vid_path, q2, model, vis_processor,max_new_tokens, gen_subtitles=False)
-
-        logger.info("SAMPLE:{} {} - {}".format(sample,label[vid_id],answer))
-        target_table[0] = np.where(classes == label[vid_id])[0][0]
-        pred_table[0] = target_table[0] if label[vid_id].split(' ')[-1] in answer.lower() else (target_table[0] - 1) % num_classes
-        logger.info(f"CORRECT:{pred_table[0]} - {target_table[0]} - {pred_table[0] == target_table[0]}")
-
-        wrongs = classes[classes != label[vid_id]]
-        for check,wrong in enumerate(wrongs):
-            logger.info(f"CHECK: {wrong.split(' ')[-1]} - {answer.lower()} - {wrong.split(' ')[-1] in answer.lower()}")
-            pred_table[check + 1] = target_table[check + 1] = np.where(classes == wrong)[0][0]
-            if wrong.split(' ')[-1] == answer.lower():
-                pred_table[check + 1] = (target_table[check + 1] - 1) % num_classes
-            logger.info(f"CHECK: {pred_table[check + 1]} - {target_table[check + 1]}")
-
         
         performance = metrics.forward(pred_table, target_table)
         logger.info(f"ACC - {performance['MulticlassAccuracy']}")
@@ -155,19 +187,13 @@ def main()->None:
         logger.info(f"RE - {performance['MulticlassRecall']}")
         logger.info(f"F1 - {performance['MulticlassF1Score']}")
         
-        pred_set = {
-            'video_name':vid_id,
-            'Q':question,
-            'A':label[vid_id],
-            'pred':answer
-        }
         pred_set:dict={
             'video_name':vid_id,
             'Q':question,
             'Q1': q1,
             'Q2':q2,
-            'A':label[vid_id][-1],
-            'pred':answer,
+            'A':label[vid_id],
+            'pred':pred_ans[0],
             'pred1':a1,
             'pred2':a2
         }

@@ -3,8 +3,8 @@ model:
   model_type: pretrain_vicuna
   freeze_vit: True
   freeze_qformer: True
-  max_txt_len: 256 #512
-  low_resource: False
+  max_txt_len: 512 # 512
+  low_resource: True
   image_size: 224
   end_sym: "</s>"
   llama_model: "mistralai/Mistral-7B-Instruct-v0.2"
@@ -15,7 +15,7 @@ model:
   lora_alpha: 16
   length: 50
   use_grad_checkpoint_llm: True
-  max_context_len: 3600 #7200
+  max_context_len: 3600 # 7200
 
 
 datasets:
@@ -40,7 +40,7 @@ run:
   warmup_lr: 1e-6
 
   weight_decay: 0.05
-  max_epoch: 50
+  max_epoch: 40
   num_workers: 16
   warmup_steps: 875
   iters_per_epoch: 875
