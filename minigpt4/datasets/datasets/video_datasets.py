@@ -997,7 +997,7 @@ class EngageNetDataset(BaseDataset, __DisplMixin):
                 self.videos_has_subtitles[video_id] = True
         self.videos_extension={}
         for video in os.listdir(os.path.join(self.vis_root,'videos')):
-            self.videos_extension[video.split('.')[0]]=video.split('.')[1]
+            self.videos_extension[video.split('.')[0]] = video.split('.')[1]
         self.transform = transforms.Compose([
                 transforms.ToPILImage(),
             ])
@@ -1072,13 +1072,19 @@ class EngageNetDataset(BaseDataset, __DisplMixin):
         # Combine the images and the instruction
         instruction = img_placeholder + '\n' + instruction
         # Return the images, instruction, answer, video_id, and the length of the video
-        return{
+        output = {
             "image": images,
             "answer": answer,
             "image_id": video_id,
             "instruction_input": instruction,
             "length": self.length,
         }
+        # print(output['image'].shape)
+        # print(output['length'])
+        # print(output['answer'])
+        # print(output['instruction_input'])
+        
+        return output
              
 
 

@@ -27,7 +27,7 @@ if os.path.exists(f"logs/{os.path.splitext(program)[0]}.log"):
     os.remove(f"logs/{os.path.splitext(program)[0]}.log")
 logger = init_logger(program)
 
-def prepare_input(vis_processor,video_path,subtitle_path,instruction):  
+def prepare_input(vis_processor,video_path,subtitle_path,instruction,unstack:bool=False):  
     cap = cv2.VideoCapture(video_path)
     if subtitle_path is not None: 
         # Load the VTT subtitle file
@@ -88,7 +88,9 @@ def prepare_input(vis_processor,video_path,subtitle_path,instruction):
     if len(images) == 0:
         # skip the video if no frame is extracted
         return None,None
-    images = torch.stack(images)
+    
+    if not unstack:
+        images = torch.stack(images)
     instruction = img_placeholder + '\n' + instruction
     return images,instruction
 

@@ -4,7 +4,7 @@ model:
   freeze_vit: True
   freeze_qformer: True
   max_txt_len: 256
-  low_resource: False
+  low_resource: True
   image_size: 224
   end_sym: "</s>"
   llama_model: "meta-llama/Llama-2-7b-chat-hf"
@@ -50,7 +50,7 @@ run:
   warmup_lr: 1e-6
 
   weight_decay: 0.05
-  max_epoch: 50
+  max_epoch: 1
   num_workers: 16
   warmup_steps: 1000
   iters_per_epoch: 1000
