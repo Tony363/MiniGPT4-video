@@ -684,11 +684,12 @@ class MiniGPT4_llama_v2(Blip2Base):
             all_losses.append(loss)
             torch.cuda.empty_cache()
         all_losses = torch.cat(all_losses, dim=-1)
-        # logger.info(f"ALL LOSSES - {all_losses} {all_losses.shape}")
+        logger.info(f"ALL LOSSES - {all_losses} {all_losses.shape}")
         if num_cand is not None:
             for i in range(all_losses.shape[0]):
                 all_losses[i, num_cand[i]:] = 9999
         output_class_ranks = torch.argsort(all_losses, dim=-1)
+        logger.info(f"OUTPUT CLASS RANKS - {output_class_ranks} {output_class_ranks.shape}")
         return output_class_ranks.tolist()
 
     def predict_answers(
