@@ -182,7 +182,7 @@ def main()->None:
         a1 = run(vid_path, q1, model, vis_processor,max_new_tokens, gen_subtitles=False)
         a2 = run(vid_path, q2, model, vis_processor,max_new_tokens, gen_subtitles=False)
         
-        performance = metrics.forward(pred_table, target_table)
+        performance = metrics.forward(pred_table[:sample], target_table[:sample])
         logger.info(f"ACC - {performance['MulticlassAccuracy']}")
         logger.info(f"PR - {performance['MulticlassPrecision']}")
         logger.info(f"RE - {performance['MulticlassRecall']}")
