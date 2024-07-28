@@ -17,7 +17,7 @@ def get_arguments():
     python3 inference_engagenet.py\
         --videos-dir /home/tony/engagenet_val/videos\
         --cfg-path test_configs/mistral_test_config.yaml\
-        --ckpt /home/tony/nvme2tb/mistral_first_finetune.pth\
+        --ckpt minigpt4/training_output/engagenet/mistral/202407230110/checkpoint_39.pth\
         --num-classes 4\
         --gpu-id 0\
         --label-path /home/tony/engagenet_labels/validation_engagement_labels.json\
@@ -182,7 +182,7 @@ def main()->None:
         a1 = run(vid_path, q1, model, vis_processor,max_new_tokens, gen_subtitles=False)
         a2 = run(vid_path, q2, model, vis_processor,max_new_tokens, gen_subtitles=False)
         
-        performance = metrics.forward(pred_table[:sample], target_table[:sample])
+        performance = metrics.forward(pred_table[:sample + 1], target_table[:sample + 1])
         logger.info(f"ACC - {performance['MulticlassAccuracy']}")
         logger.info(f"PR - {performance['MulticlassPrecision']}")
         logger.info(f"RE - {performance['MulticlassRecall']}")

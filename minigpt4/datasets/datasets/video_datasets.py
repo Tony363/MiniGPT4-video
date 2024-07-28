@@ -31,6 +31,13 @@ import pysrt
 import chardet
 import re 
 
+from utils import init_logger
+import os
+program = os.path.basename(__file__)
+if os.path.exists(f"logs/{os.path.splitext(program)[0]}.log"):
+    os.remove(f"logs/{os.path.splitext(program)[0]}.log")
+logger = init_logger(program)
+
 def duration_to_seconds(duration_str):
     duration_str = duration_str[2:]  # Removing 'PT' prefix
     seconds = 0
@@ -56,18 +63,18 @@ def generate_subtitles(video_path,existed_subtitles):
     video_id=video_path.split('/')[-1].split('.')[0]
     audio_path = f"workspace/misssing_eval_subtitles/mp3/{video_id}"+'.mp3'
     if existed_subtitles.get(video_id,False):
-        print("subtitle already generated")
+        logger.info("subtitle already generated")
         return f"workspace/misssing_eval_subtitles/{video_id}"+'.vtt'
     try:
         extract_audio(video_path,audio_path)
-        print("successfully extracted")
+        logger.info("successfully extracted")
         os.system(f"whisper {audio_path}  --language English --model large --output_format vtt --output_dir workspace/misssing_eval_subtitles")
         # remove the audio file
         os.system(f"rm {audio_path}")
-        print("subtitle successfully generated")  
+        logger.info("subtitle successfully generated")  
         return f"workspace/misssing_eval_subtitles/{video_id}"+'.vtt'
     except Exception as e:
-        print("error",video_path ,e)
+        logger.info("error",video_path ,e)
         return None
 
 def read_subtitles(subtitle_path):
@@ -193,7 +200,7 @@ class CMDVideoDataset(BaseDataset, __DisplMixin):
                 break
         cap.release()
         if len(images) ==0:
-            print("Video not found",video_path)
+            logger.info("Video not found",video_path)
             
         if 0 <len(images) < self.length:
             last_item = images[-1]
@@ -422,7 +429,7 @@ class VideoChatGPTDataset(BaseDataset, __DisplMixin):
                 break
         cap.release()
         if len(images) ==0:
-            print("Video not found",video_path)
+            logger.info("Video not found",video_path)
             
         if 0 <len(images) < self.length:
             last_item = images[-1]
@@ -587,7 +594,7 @@ class WebVidEvalDataset(torch.utils.data.Dataset):
             images = torch.zeros(length, 3, 224, 224)
             for i in range(length):
                 img_placeholder += '<Img><ImageHere>'
-            print("Video not found")
+            logger.info("Video not found")
             video_found = False
         if len(images) < self.length:
             last_item = images[-1]
@@ -684,8 +691,8 @@ class VideoChatGPTEvalDataset(torch.utils.data.Dataset):
                 break
         cap.release()
         if len(images) == 0:
-            print("Video not found")
-            print('Video path',video_path)
+            logger.info("Video not found")
+            logger.info('Video path',video_path)
             return None,None,None,None,None
         if  0 <len(images) < self.length:
             last_image = images[-1]
@@ -779,8 +786,8 @@ class Video_validation_Dataset(torch.utils.data.Dataset):
                 break
         cap.release()
         if len(images) == 0:
-            print("Video not found")
-            print('Video path',video_path)
+            logger.info("Video not found")
+            logger.info('Video path',video_path)
             return None,None,None,None,None
         if  0 <len(images) < self.length:
             last_image = images[-1]
@@ -876,8 +883,8 @@ class VideoChatGPTEval_consistancy(torch.utils.data.Dataset):
                 break
         cap.release()
         if len(images) == 0:
-            print("Video not found")
-            print('Video path',video_path)
+            logger.info("Video not found")
+            logger.info('Video path',video_path)
             return None,None,None,None,None
         if  0 <len(images) < self.length:
             last_image = images[-1]
@@ -961,7 +968,7 @@ class TVQAEVAL (torch.utils.data.Dataset):
             if len(images) >= self.length:
                 break
         if len(images) ==0:
-            print("Video not found",video_frames_path)
+            logger.info("Video not found",video_frames_path)
             
         if 0 <len(images) < self.length:
             last_item = images[-1]
@@ -1017,7 +1024,7 @@ class EngageNetDataset(BaseDataset, __DisplMixin):
             subtitle_path = os.path.join(self.subtitle_folder, f'{video_id}.vtt')
             # Load the VTT subtitle file
             vtt_file = webvtt.read(subtitle_path)
-                
+
         video_path = os.path.join(self.vis_root,'videos',f'{video_id}.{self.videos_extension[video_id]}')
         clip = VideoFileClip(video_path)
         total_num_frames = int(clip.duration * clip.fps)
@@ -1061,7 +1068,7 @@ class EngageNetDataset(BaseDataset, __DisplMixin):
                 break
         cap.release()
         if len(images) ==0:
-            print("Video not found",video_path)
+            logger.info("Video not found",video_path)
             
         if 0 <len(images) < self.length:
             last_item = images[-1]
@@ -1078,11 +1085,12 @@ class EngageNetDataset(BaseDataset, __DisplMixin):
             "image_id": video_id,
             "instruction_input": instruction,
             "length": self.length,
+            "rppg":torch.ones(1,1,160)
         }
-        # print(output['image'].shape)
-        # print(output['length'])
-        # print(output['answer'])
-        # print(output['instruction_input'])
+        # logger.info(output['image'].shape)
+        # logger.info(output['length'])
+        # logger.info(output['answer'])
+        # logger.info(output['instruction_input'])
         
         return output
              
@@ -1131,7 +1139,8 @@ class Video_loader_template(BaseDataset, __DisplMixin):
             subtitle_path = os.path.join(self.subtitle_folder, f'{video_id}.vtt')
             # Load the VTT subtitle file
             vtt_file = webvtt.read(subtitle_path)
-                
+            
+        logger.info(f"{self.vis_root}/videos")    
         video_path = os.path.join(self.vis_root,'videos',f'{video_id}.{self.videos_extension[video_id]}')
         clip = VideoFileClip(video_path)
         total_num_frames = int(clip.duration * clip.fps)
@@ -1175,7 +1184,7 @@ class Video_loader_template(BaseDataset, __DisplMixin):
                 break
         cap.release()
         if len(images) ==0:
-            print("Video not found",video_path)
+            logger.info("Video not found",video_path)
             
         if 0 <len(images) < self.length:
             last_item = images[-1]

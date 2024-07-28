@@ -17,7 +17,8 @@ number_of_gpus=2 # number of gpus
 read LOWERPORT UPPERPORT < /proc/sys/net/ipv4/ip_local_port_range
 while :
 do
-        PORT="`shuf -i $LOWERPORT-$UPPERPORT -n 1`"
+        # PORT="`shuf -i $LOWERPORT-$UPPERPORT -n 1`"
+        PORT="12345"
         ss -lpn | grep -q ":$PORT " || break
 done
 echo "Port is $PORT"

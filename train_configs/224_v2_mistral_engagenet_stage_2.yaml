@@ -8,7 +8,7 @@ model:
   image_size: 224
   end_sym: "</s>"
   llama_model: "mistralai/Mistral-7B-Instruct-v0.2"
-  ckpt: "checkpoints/video_mistral_checkpoint_last.pth" # set the checkpoint to start the training from
+  ckpt: "checkpoints/video_mistral_checkpoint_best.pth" # set the checkpoint to start the training from
   use_grad_checkpoint: True
   chat_template: True
   lora_r: 64
@@ -40,7 +40,7 @@ run:
   warmup_lr: 1e-6
 
   weight_decay: 0.05
-  max_epoch: 40
+  max_epoch: 50
   num_workers: 16
   warmup_steps: 875
   iters_per_epoch: 875
