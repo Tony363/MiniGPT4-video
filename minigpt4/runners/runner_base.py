@@ -40,6 +40,13 @@ from minigpt4.conversation.conversation import CONV_VISION
 from tqdm import tqdm
 from omegaconf import OmegaConf
 
+from utils import init_logger
+import os
+program = os.path.basename(__file__)
+if os.path.exists(f"../logs/{os.path.splitext(program)[0]}.log"):
+    os.remove(f"../logs/{os.path.splitext(program)[0]}.log")
+logger = init_logger(program)
+
 @registry.register_runner("runner_base")
 class RunnerBase:
     """
@@ -87,10 +94,10 @@ class RunnerBase:
         A property to get the DDP-wrapped model on the device.
         """
         # move model to device
-        # print("self device",self.device)
-        # print("self model device",self._model.device)
+        # logger.info("self device",self.device)
+        # logger.info("self model device",self._model.device)
         
-        # print(self._model.device, self.device)
+        # logger.info(self._model.device, self.device)
 
         if self._model.device != self.device:
             self._model = self._model.to(self.device)
@@ -116,7 +123,7 @@ class RunnerBase:
             for n, p in self.model.named_parameters():
                 if not p.requires_grad:
                     continue  # frozen weights
-                print(n)
+                logger.info(n)
                 if p.ndim < 2 or "bias" in n or "ln" in n or "bn" in n:
                     p_non_wd.append(p)
                 else:
@@ -143,7 +150,7 @@ class RunnerBase:
     @property
     def scaler(self):
         amp = self.config.run_cfg.get("amp", False)
-        # print("amp", amp)
+        # logger.info("amp", amp)
         # assert False
 
 
@@ -227,7 +234,7 @@ class RunnerBase:
             self.datasets = datasets
             # self.datasets = concat_datasets(datasets)
 
-            # print dataset statistics after concatenation/chaining
+            # logger.info dataset statistics after concatenation/chaining
             for split_name in self.datasets:
                 if isinstance(self.datasets[split_name], tuple) or isinstance(
                     self.datasets[split_name], list
@@ -274,8 +281,8 @@ class RunnerBase:
             #     for index, split in enumerate(split_names)
             # ]
 
-            # print(split_names)
-            print("batch sizes", batch_sizes)
+            # logger.info(split_names)
+            logger.info(f"batch sizes { batch_sizes}")
 
             collate_fns = []
             for dataset in datasets:
@@ -410,7 +417,7 @@ class RunnerBase:
             #         # val_log = self.eval_epoch(
             #         #     split_name=split_name,cur_epoch=cur_epoch
             #         # )
-            #         print("val log",val_log)
+            #         logger.info("val log",val_log)
             #         if val_log is not None:
             #             if is_main_process():
             #                 assert (
@@ -426,7 +433,7 @@ class RunnerBase:
             #                 val_log.update({"best_epoch": best_epoch})
             #                 self.log_stats(val_log, split_name)
             #                 wandb.log({"epoch": cur_epoch, "GPT4_Accuracy": val_log['agg_metrics']})
-            #                 print("Validation finished")
+            #                 logger.info("Validation finished")
 
             # else:
             # if no validation split is provided, we just save the checkpoint at the end of each epoch.
@@ -706,7 +713,7 @@ class RunnerBase:
             self.scaler.load_state_dict(checkpoint["scaler"])
 
         self.start_epoch = checkpoint["epoch"] + 1
-        print("resume the checkpoint")
+        logger.info("resume the checkpoint")
         logging.info("Resume checkpoint from {}".format(url_or_filename))
 
     @main_process

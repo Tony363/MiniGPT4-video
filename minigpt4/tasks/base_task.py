@@ -20,6 +20,13 @@ import openai
 import ast
 openai.api_key_path = "/home/ataallka/chatgpt_api.txt"
 
+from utils import init_logger
+import os
+program = os.path.basename(__file__)
+if os.path.exists(f"logs/{os.path.splitext(program)[0]}.log"):
+    os.remove(f"logs/{os.path.splitext(program)[0]}.log")
+logger = init_logger(program)
+
 class BaseTask:
     def __init__(self, **kwargs):
         super().__init__()
@@ -122,7 +129,7 @@ class BaseTask:
             response_dict = ast.literal_eval(response_message)
             return response_dict
         except Exception as e:
-            print(f"Error : {e}")
+            logger.info(f"Error : {e}")
             return None
         
     def after_evaluation(self, val_result,epoch,**kwargs):
@@ -143,7 +150,7 @@ class BaseTask:
                 continue
         avg_score=sum(scores)/len(scores)
         accuracy=(yes_count/(yes_count+no_count))*100
-        print(f"Epoch {epoch} chatgpt score: {avg_score} accuracy: {accuracy}")
+        logger.info(f"Epoch {epoch} chatgpt score: {avg_score} accuracy: {accuracy}")
         val_accuracy={"agg_metrics":accuracy,"best_epoch":epoch}
         # val_accuracy={"agg_metrics":50.2,"best_epoch":epoch}
         return val_accuracy
@@ -155,9 +162,9 @@ class BaseTask:
         metric_logger = MetricLogger(delimiter="  ")
         header = "Evaluation"
         # TODO make it configurable
-        print_freq = 10
+        logger.info_freq = 10
         results = []
-        for samples in metric_logger.log_every(data_loader, print_freq, header):
+        for samples in metric_logger.log_every(data_loader, logger.info_freq, header):
             samples = prepare_sample(samples, cuda_enabled=cuda_enabled)
             eval_output = self.valid_step(model=model, samples=samples)
             for i,pred in enumerate(eval_output):
@@ -365,6 +372,6 @@ class BaseTask:
                 result = result_new
 
             json.dump(result, open(final_result_file, "w"))
-            print("result file saved to %s" % final_result_file)
+            logger.info("result file saved to %s" % final_result_file)
 
         return final_result_file

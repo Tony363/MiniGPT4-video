@@ -12,6 +12,12 @@ from typing import List, Tuple, Any
 
 from minigpt4.common.registry import registry
 
+from utils import init_logger
+import os
+program = os.path.basename(__file__)
+if os.path.exists(f"logs/{os.path.splitext(program)[0]}.log"):
+    os.remove(f"logs/{os.path.splitext(program)[0]}.log")
+logger = init_logger(program)
 
 class SeparatorStyle(Enum):
     """Different separator style."""
@@ -159,7 +165,7 @@ class Chat:
 
         current_max_len = embs.shape[1] + max_new_tokens
         if current_max_len - max_length > 0:
-            print('Warning: The number of tokens in current conversation exceeds the max length. '
+            logger.info('Warning: The number of tokens in current conversation exceeds the max length. '
                   'The model will not see the contexts outside the range.')
         begin_idx = max(0, current_max_len - max_length)
 

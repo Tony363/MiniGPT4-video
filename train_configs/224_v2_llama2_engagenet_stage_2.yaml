@@ -50,7 +50,7 @@ run:
   warmup_lr: 1e-6
 
   weight_decay: 0.05
-  max_epoch: 1
+  max_epoch: 50
   num_workers: 16
   warmup_steps: 1000
   iters_per_epoch: 1000
