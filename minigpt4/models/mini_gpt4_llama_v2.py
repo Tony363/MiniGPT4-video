@@ -28,12 +28,12 @@ from minigpt4.models import policies
 from utils import init_logger
 import os
 program = os.path.basename(__file__)
-if os.path.exists(f"logs/{os.path.splitext(program)[0]}.log"):
-    os.remove(f"logs/{os.path.splitext(program)[0]}.log")
+if os.path.exists(f"../../logs/{os.path.splitext(program)[0]}.log"):
+    os.remove(f"../../logs/{os.path.splitext(program)[0]}.log")
 logger = init_logger(program)
 
 @registry.register_model("mini_gpt4_llama_v2_rppg")
-class MiniGPT4_llama_v2(Blip2Base):
+class MiniGPT4_llama_v2_Rppg(Blip2Base):
     """
     BLIP2 GPT-LLAMA model.
     """
@@ -243,7 +243,12 @@ class MiniGPT4_llama_v2(Blip2Base):
             for idx,pair in enumerate(zip(seg_embs[:-1], img_list)):
                 for emb in pair:
                     if idx % rppg_interval == 0:
-                        mixed_embs.append(rppg[:, idx//rppg_interval,:])
+                        logger.info("WITH RPPG")
+                        rppg_tag = self.llama_tokenizer("<rppg>", return_tensors="pt", add_special_tokens=False).to(img_embeds.device)
+                        rppg_embed = self.embed_tokens(rppg_tag.input_ids)
+                        logger.info(f"RPPG TOKEN - {rppg_embed.shape}")
+                        mixed_embs.append(rppg_embed)
+                        mixed_embs.append(rppg[:, idx//rppg_interval,:].unsqueeze(0))
                     mixed_embs.append(emb)
             mixed_embs += [seg_embs[-1]]
         else:
@@ -275,7 +280,6 @@ class MiniGPT4_llama_v2(Blip2Base):
                 padding="longest",
                 add_special_tokens=False
             ).to(self.device)
-            logging.info(f"TOKEN LENGTH {prompt_tokens[0].shape}")
             prompt_embeds = self.embed_tokens(prompt_tokens.input_ids)
             atts_prompt = prompt_tokens.attention_mask
             return prompt_embeds, atts_prompt
@@ -292,23 +296,21 @@ class MiniGPT4_llama_v2(Blip2Base):
                     each_img_embed = each_img_embed[:lengths[idx] * pn]
                 p_segs = each_prompt.split('<ImageHere>')
                 if rppg is not None:
-                    rppg_interval = (len(p_segs) - 1)//rppg.shape[2]
+                    rppg_interval = (len(p_segs) - 1)//rppg.shape[1]
+                    # logger.info(f"PROMPT WRAP {len(p_segs) - 1}/ {rppg.shape[1]} = {rppg_interval}")
                     # print(img_embeds.dtype,atts_img.dtype,rppg.dtype)
                 interleave_emb = []
-
                 for idx, seg in enumerate(p_segs[:-1]):
                     p_tokens = self.llama_tokenizer(seg, return_tensors="pt", add_special_tokens=False).to(img_embeds.device)
                     p_embed = self.embed_tokens(p_tokens.input_ids)
                     if rppg is not None and idx % rppg_interval == 0 :
-                        logger.info("WITH RPPG")
-                        rppg_tag = self.llama_tokenizer("<Rppg>", return_tensors="pt", add_special_tokens=False).to(img_embeds.device)
+                        rppg_tag = self.llama_tokenizer("<rppg>", return_tensors="pt", add_special_tokens=False).to(img_embeds.device)
                         rppg_embed = self.embed_tokens(rppg_tag.input_ids)
-                        logger.info(f"RPPG TOKEN - {rppg_embed.shape}")
                         m_emb = torch.cat([
                             p_embed, 
                             each_img_embed[None][:, idx*pn:(idx+1)*pn],
                             rppg_embed,
-                            rppg[:, :,idx//rppg_interval,:]
+                            rppg[:,idx//rppg_interval,:].unsqueeze(0)
                         ], dim=1)
                         interleave_emb.append(m_emb)
                     else:
@@ -469,16 +471,19 @@ class MiniGPT4_llama_v2(Blip2Base):
                 
             if self.chat_template:
                 instruction = ["[INST] " + instruct + "[/INST]" for instruct in instruction]
-
-            if 'length' in samples:
+                
+            if 'length' in samples and 'rppg' in samples:
+                bsz, pn, hs = img_embeds.shape
+                img_embeds = img_embeds.reshape(len(samples['image']), -1, pn, hs) # (200,64,4096) -> (4,50,64,4096)
+                cond_embeds, cond_atts = self.prompt_wrap(img_embeds, img_atts, instruction, lengths=samples['length'],rppg=rppg)
+            elif 'rppg' in samples:
+                cond_embeds, cond_atts = self.prompt_wrap(img_embeds, img_atts, instruction,rppg=rppg)
+            elif 'length' in samples:
                 # the input is a image train (like videos)
                 bsz, pn, hs = img_embeds.shape
                 img_embeds = img_embeds.reshape(len(samples['image']), -1, pn, hs) # (200,64,4096) -> (4,50,64,4096)
-                cond_embeds, cond_atts = self.prompt_wrap(img_embeds, img_atts, instruction, samples['length'])
-            elif 'length' in samples and 'rppg' in samples:
-                bsz, pn, hs = img_embeds.shape
-                img_embeds = img_embeds.reshape(len(samples['image']), -1, pn, hs) # (200,64,4096) -> (4,50,64,4096)
-                cond_embeds, cond_atts = self.prompt_wrap(img_embeds, img_atts, instruction, length=samples['length'],rppg=rppg)
+                cond_embeds, cond_atts = self.prompt_wrap(img_embeds, img_atts, instruction, lengths=samples['length'])
+        
             else:
                 cond_embeds, cond_atts = self.prompt_wrap(img_embeds, img_atts, instruction)
 
@@ -510,9 +515,7 @@ class MiniGPT4_llama_v2(Blip2Base):
         # logger.info(f"IMAGE {samples['image'].shape}")
         # logger.info(f"PROMPT {samples['instruction_input']} {type(samples['instruction_input'])}")
         # logger.info(f"LENGTH {samples['length']}")
-        # logger.info(f"RPPG {samples['rppg'].shape}")
-
-
+        # logger.info(f"RPPG: {samples['rppg'].shape} {samples['rppg'].dtype}")
         # prepare the embedding to condition and the embedding to regress
         cond_embeds, cond_atts, regress_embeds, regress_atts, part_targets = \
             self.preparing_embedding(samples)

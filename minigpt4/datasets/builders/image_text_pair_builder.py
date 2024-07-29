@@ -25,6 +25,13 @@ from minigpt4.datasets.datasets.aok_vqa_reasoning_datasets import AOKVQAReasonin
 from minigpt4.datasets.datasets.paint_dataset import PaintPTCOCODataset, PaintRLCOCODataset, PaintPixelCOCODataset, SegReferCOCODataset, PaintLanRLOpaqueCOCODataset
 from minigpt4.datasets.datasets.nav_dataset import NavR2RDataset
 
+from utils import init_logger
+import os
+program = os.path.basename(__file__)
+if os.path.exists(f"logs/{os.path.splitext(program)[0]}.log"):
+    os.remove(f"logs/{os.path.splitext(program)[0]}.log")
+logger = init_logger(program)
+
 @registry.register_builder("yifan_reasoning")
 class LlavaDetailBuilder(BaseDatasetBuilder):
     train_dataset_cls = AOKVQAReasoningDataset
@@ -68,8 +75,8 @@ class CaptionReasoningBuilder(BaseDatasetBuilder):
         # create datasets
         dataset_cls = self.train_dataset_cls
 
-        # print("ann_path",build_info.ann_path)
-        # print("vis root",build_info.image_path )
+        # logger.info("ann_path",build_info.ann_path)
+        # logger.info("vis root",build_info.image_path )
 
         datasets['train'] = dataset_cls(
             vis_processor=self.vis_processors['train'],
@@ -844,7 +851,7 @@ class VideoChatGPTBuilder(BaseDatasetBuilder):
     DATASET_CONFIG_DICT = {
         "default": "configs/datasets/video_chatgpt/default.yaml",
     }
-    print(DATASET_CONFIG_DICT)
+    logger.info(DATASET_CONFIG_DICT)
 
     def build_datasets(self):
         # download, split, etc...
@@ -874,7 +881,7 @@ class EngageNetBuilder(BaseDatasetBuilder):
     DATASET_CONFIG_DICT = {
         "default": "configs/datasets/engagenet/default.yaml",
     }
-    print(DATASET_CONFIG_DICT)
+    logger.info(DATASET_CONFIG_DICT)
 
     def build_datasets(self):
         # download, split, etc...
@@ -905,7 +912,7 @@ class EngageNetBuilder(BaseDatasetBuilder):
     DATASET_CONFIG_DICT = {
         "default": "configs/datasets/engagenet/default.yaml",
     }
-    print(DATASET_CONFIG_DICT)
+    logger.info(DATASET_CONFIG_DICT)
 
     def build_datasets(self):
         # download, split, etc...
@@ -935,7 +942,7 @@ class VideoTemplateBuilder(BaseDatasetBuilder):
     DATASET_CONFIG_DICT = {
         "default": "path to the config file",
     }
-    print(DATASET_CONFIG_DICT)
+    logger.info(DATASET_CONFIG_DICT)
 
     def build_datasets(self):
         # download, split, etc...
