@@ -990,7 +990,7 @@ class EngageNetDataset(BaseDataset, __DisplMixin):
         vis_root, 
         ann_paths,
         subtitles_path,
-        rppg_dir:str='/home/tony/engagenet_train/rppg_former/tensors',
+        rppg_dir:str='/home/tony/engagenet_train/rppg_mamba/tensors',
         model_name='llama2',
         add_subtitles=True
     ):
@@ -1014,7 +1014,7 @@ class EngageNetDataset(BaseDataset, __DisplMixin):
                 video_id = sub.split('.')[0]
                 self.videos_has_subtitles[video_id] = True
         self.videos_extension={}
-        for video in os.listdir(os.path.join(self.vis_root,'videos')):
+        for video in os.listdir(os.path.join(self.vis_root,'30fps_videos')):
             self.videos_extension[video.split('.')[0]] = video.split('.')[1]
         self.transform = transforms.Compose([
                 transforms.ToPILImage(),
@@ -1038,7 +1038,7 @@ class EngageNetDataset(BaseDataset, __DisplMixin):
             # Load the VTT subtitle file
             vtt_file = webvtt.read(subtitle_path)
 
-        video_path = os.path.join(self.vis_root,'videos',f'{video_id}.{self.videos_extension[video_id]}')
+        video_path = os.path.join(self.vis_root,'30fps_videos',f'{video_id}.{self.videos_extension[video_id]}')
         clip = VideoFileClip(video_path)
         total_num_frames = int(clip.duration * clip.fps)
         clip.close()
@@ -1092,13 +1092,15 @@ class EngageNetDataset(BaseDataset, __DisplMixin):
         # Combine the images and the instruction
         instruction = img_placeholder + '\n' + instruction
         # Return the images, instruction, answer, video_id, and the length of the video
+        # rppg = torch.load(os.path.join(self.rppg_dir,f"{video_id}.pt")).flatten().float()
+        # logger.info(f"RPPG: {rppg.shape} {rppg.dtype}")
         output = {
             "image": images,
             "answer": answer,
             "image_id": video_id,
             "instruction_input": instruction,
             "length": self.length,
-            "rppg": torch.load(os.path.join(self.rppg_dir,f"{video_id}.pt")).flatten().cpu()
+            # "rppg": rppg
         }
         return output
              
