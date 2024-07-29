@@ -22,8 +22,8 @@ import time
 from utils import init_logger
 
 program = os.path.basename(__file__)
-if os.path.exists(f"logs/{os.path.splitext(program)[0]}.log"):
-    os.remove(f"logs/{os.path.splitext(program)[0]}.log")
+if os.path.exists(f"../logs/{os.path.splitext(program)[0]}.log"):
+    os.remove(f"../logs/{os.path.splitext(program)[0]}.log")
 logger = init_logger(program)
 
 

@@ -123,7 +123,7 @@ class RunnerBase:
             for n, p in self.model.named_parameters():
                 if not p.requires_grad:
                     continue  # frozen weights
-                logger.info(n)
+                # logger.info(n)
                 if p.ndim < 2 or "bias" in n or "ln" in n or "bn" in n:
                     p_non_wd.append(p)
                 else:
@@ -282,7 +282,7 @@ class RunnerBase:
             # ]
 
             # logger.info(split_names)
-            logger.info(f"batch sizes { batch_sizes}")
+            # logger.info(f"batch sizes { batch_sizes}")
 
             collate_fns = []
             for dataset in datasets:
