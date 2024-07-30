@@ -16,10 +16,10 @@ model:
   length: 50
   use_grad_checkpoint_llm: True
   max_context_len: 3600 # 7200
-
+  rppg_encoder_weights: "minigpt4/autoencoder/model_weights_RhytmFormer.pth"
 
 datasets:
-  engagenet: #99378 row  - 13224 video
+  engagenet_rppg: #99378 row  - 13224 video
     batch_size: 1
     vis_processor:
       train:

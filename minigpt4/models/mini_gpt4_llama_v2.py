@@ -439,7 +439,10 @@ class MiniGPT4_llama_v2_Rppg(Blip2Base):
             img_embeds = img_atts = None
         if 'rppg' in samples:
             # logger.info(f"RPPG INPUT - {samples['rppg'].shape}")
-            rppg = self.rppg_proj.encode(samples['rppg'].tile((2,1)))[0].unsqueeze(0)
+            rppg = samples['rppg']
+            if rppg.shape[0] < 2:
+                rppg = rppg.tile((2,1))
+            rppg = self.rppg_proj.encode(rppg)[0].unsqueeze(0)
             # rppg = torch.ones(1,1,5,4096,dtype=torch.int8).to("cuda:0")
             # logger.info(f"RPPG ENCODE {rppg.shape}")
             
@@ -588,7 +591,9 @@ class MiniGPT4_llama_v2_Rppg(Blip2Base):
             logger.info(f"IMG EMBEDS  - {img_embeds.shape} {atts_img.shape}")
             
         if rppg is not None:
-            rppgs = [self.rppg_proj.encode(rppg.tile((2,1)))[0].unsqueeze(0)]
+            if rppg.shape[0] < 2:
+                rppg = rppg.tile((2,1))
+            rppgs = [self.rppg_proj.encode(rppg)[0].unsqueeze(0)]
             # rppgs = [torch.ones(1,5,4096,dtype=torch.int8).to(self.device)]    
         
         if lengths is not None:
@@ -859,7 +864,7 @@ class MiniGPT4_llama_v2_Rppg(Blip2Base):
         use_grad_checkpoint_llm = cfg.get("use_grad_checkpoint_llm", False)
         max_context_len = cfg.get("max_context_len", 3800)
         remove_template = cfg.get("remove_template", False)
-        rppg_encoder_weights = cfg.get("rppg_encoder_weights", "minigpt4/autoencoder/model_weights_RhytmFormer.pth")
+        rppg_encoder_weights = cfg.get("rppg_encoder_weights",  "minigpt4/autoencoder/model_weights_RhytmFormer.pth")
 
         model = cls(
             vit_model=vit_model,
