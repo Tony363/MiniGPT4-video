@@ -17,9 +17,9 @@ def get_arguments():
     python3 inference_engagenet.py\
         --videos-dir /home/tony/engagenet_val/videos\
         --cfg-path test_configs/mistral_test_config.yaml\
-        --ckpt minigpt4/training_output/engagenet/mistral/202407230110/checkpoint_39.pth\
+        --ckpt /home/tony/nvme2tb/tuned_models/mistral_single_word.pth\
         --num-classes 4\
-        --gpu-id 0\
+        --gpu-id 1\
         --label-path /home/tony/engagenet_labels/validation_engagement_labels.json\
         --consistency-qa /home/tony/MiniGPT4-video/gpt_evaluation/consistency_qa_engagenet.json
         
@@ -175,7 +175,7 @@ def main()->None:
             "num_choices":[num_classes],
             "length":[45],
         })
-        
+        logger.info(f"{sample}: {pred_ans[0]} - {label[vid_id]}")
         pred_table[sample],target_table[sample] = mapping[pred_ans[0]],mapping[label[vid_id]]         
         
         q1,q2 = qa_pairs[vid_id]['Q1'],qa_pairs[vid_id]['Q2']
