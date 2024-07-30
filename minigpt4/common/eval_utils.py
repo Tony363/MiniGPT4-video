@@ -58,8 +58,6 @@ def prepare_texts(texts, conv_temp, template='<Img><ImageHere></Img>', lengths=N
 
 
 def init_model(args,device:str=None)->tuple:
-    if device is None:
-        device = 'cuda:0'
     logger.info('Initialization Model')
     cfg = Config(args)
     cfg.model_cfg.ckpt = args.ckpt
@@ -69,7 +67,7 @@ def init_model(args,device:str=None)->tuple:
     model_config = cfg.model_cfg
     model_config.low_resource = True
     model_cls = registry.get_model_class(model_config.arch)
-    model = model_cls.from_config(model_config).to(device)
+    model = model_cls.from_config(model_config)
 
 #     import pudb; pudb.set_trace()
     key = list(cfg.datasets_cfg.keys())[0]

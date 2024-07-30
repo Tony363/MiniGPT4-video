@@ -1216,7 +1216,9 @@ class EngageNetRppgDataset(BaseDataset, __DisplMixin):
         instruction = img_placeholder + '\n' + instruction
         # Return the images, instruction, answer, video_id, and the length of the video
         
-        rppg = torch.load(os.path.join(self.rppg_dir,f"{video_id}.pt")).flatten().float()
+        rppg = 0
+        if os.path.exists(os.path.join(self.rppg_dir,f"{video_id}.pt")):
+            rppg = torch.load(os.path.join(self.rppg_dir,f"{video_id}.pt")).flatten().float()
         # logger.info(f"RPPG: {rppg.shape} {rppg.dtype}")
         output = {
             "image": images,

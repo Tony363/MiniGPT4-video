@@ -3,12 +3,12 @@ model:
   model_type: pretrain_vicuna
   freeze_vit: True
   freeze_qformer: True
-  max_txt_len: 256 #512
+  max_txt_len: 512
   low_resource: True
   image_size: 224
   end_sym: "</s>"
   llama_model: "mistralai/Mistral-7B-Instruct-v0.2"
-  ckpt: "minigpt4/training_output/engagenet/mistral/202407230110/checkpoint_39.pth" 
+  ckpt: "/home/tony/nvme2tb/tuned_models/mistral_single_word.pth" 
   #"checkpoints/video_mistral_all_checkpoint_last.pth"
   use_grad_checkpoint: True
   chat_template: True
@@ -17,10 +17,10 @@ model:
   length: 50
   use_grad_checkpoint_llm: True
   max_context_len: 3600 #7200
-
+  device: "cuda:1"
 
 datasets:
-  video_chatgpt: #99378 row  - 13224 video
+  engagenet: #99378 row  - 13224 video
     batch_size: 1
     vis_processor:
       train:
@@ -36,4 +36,4 @@ run:
   task: image_text_pretrain
   seed: 42
   amp: True
-  device: "cuda:0"
+  device: "cuda:1"

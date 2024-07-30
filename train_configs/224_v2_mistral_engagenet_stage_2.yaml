@@ -16,6 +16,7 @@ model:
   length: 50
   use_grad_checkpoint_llm: True
   max_context_len: 3600 # 7200
+  device: "cuda:1"
 
 
 datasets:

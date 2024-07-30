@@ -114,7 +114,7 @@ class Config:
             dataset_config_path = builder_cls.default_config_path(
                 type=dataset_config_type
             )
-            logger.info(f"BUILD DATASET CONFIG - {dataset_config_type} {builder_cls} {dataset_config_path}")
+            # logger.info(f"BUILD DATASET CONFIG - {dataset_config_type} {builder_cls} {dataset_config_path}")
             # hierarchy override, customized config > default config
             dataset_config = OmegaConf.merge(
                 dataset_config,
