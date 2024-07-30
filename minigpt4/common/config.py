@@ -45,7 +45,8 @@ class Config:
         self.config = OmegaConf.merge(
             runner_config, model_config, dataset_config, user_config
         )
-
+        # logger.info(f"CONFIG {self.config}")
+        
     def _validate_runner_config(self, runner_config):
         """
         This method validates the configuration, such that
@@ -103,7 +104,7 @@ class Config:
             )
 
         dataset_config = OmegaConf.create()
-
+        logger.info(f"FROM CONFIG - {datasets}")
         for dataset_name in datasets:
 
             logger.info(f"dataset name {dataset_name}")
@@ -113,7 +114,7 @@ class Config:
             dataset_config_path = builder_cls.default_config_path(
                 type=dataset_config_type
             )
-
+            logger.info(f"BUILD DATASET CONFIG - {dataset_config_type} {builder_cls} {dataset_config_path}")
             # hierarchy override, customized config > default config
             dataset_config = OmegaConf.merge(
                 dataset_config,

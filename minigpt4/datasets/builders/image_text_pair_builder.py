@@ -899,7 +899,7 @@ class EngageNetBuilder(BaseDatasetBuilder):
             vis_root=build_info.vis_root, # Add videos path here
             ann_paths=build_info.ann_paths, # Add annotations path here
             subtitles_path=build_info.subtitles_path, # Add subtitles path here
-            model_name='mistral' # Add model name here (llama2 or mistral)
+            model_name=build_info.model_name # Add model name here (llama2 or mistral)
         )
 
         return datasets
@@ -910,7 +910,7 @@ class EngageNetBuilder(BaseDatasetBuilder):
     train_dataset_cls = EngageNetRppgDataset # Add the dataset class here
 
     DATASET_CONFIG_DICT = {
-        "default": "configs/datasets/engagenet/default.yaml",
+        "default": "configs/datasets/engagenet_rppg/default.yaml",
     }
     logger.info(DATASET_CONFIG_DICT)
 
@@ -920,6 +920,7 @@ class EngageNetBuilder(BaseDatasetBuilder):
         self.build_processors()
 
         build_info = self.config.build_info # information from the config file
+        logger.info(f"BUILD INFO RPPG - {build_info}")
         datasets = dict()
 
         # create datasets
@@ -930,7 +931,8 @@ class EngageNetBuilder(BaseDatasetBuilder):
             vis_root=build_info.vis_root, # Add videos path here
             ann_paths=build_info.ann_paths, # Add annotations path here
             subtitles_path=build_info.subtitles_path, # Add subtitles path here
-            model_name='mistral' # Add model name here (llama2 or mistral)
+            model_name=build_info.model_name, # Add model name here (llama2 or mistral)
+            rppg_dir=build_info.rppg_dir
         )
 
         return datasets

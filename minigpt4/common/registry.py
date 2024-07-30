@@ -231,9 +231,9 @@ class Registry:
 
     @classmethod
     def get_builder_class(cls, name):
-        from minigpt4.datasets.builders.image_text_pair_builder import EngageNetBuilder
+        # from minigpt4.datasets.builders.image_text_pair_builder import EngageNetBuilder
 
-        return cls.mapping["builder_name_mapping"].get(name, EngageNetBuilder)
+        return cls.mapping["builder_name_mapping"].get(name,None )#EngageNetBuilder
 
     @classmethod
     def get_model_class(cls, name):
