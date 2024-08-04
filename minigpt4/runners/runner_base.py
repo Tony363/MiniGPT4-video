@@ -230,12 +230,14 @@ class RunnerBase:
 
             batch_sizes = {dataset_name: getattr(self.config.datasets_cfg, dataset_name).batch_size
                            for dataset_name in self.datasets.keys()}
+
             datasets, batch_sizes = reorg_datasets_by_split(self.datasets, batch_sizes)
             self.datasets = datasets
             # self.datasets = concat_datasets(datasets)
-
+            # logger.info(f"DATASETS - {self.datasets}")
             # logger.info dataset statistics after concatenation/chaining
             for split_name in self.datasets:
+                logger.info(f"SPLIT NAME {split_name}")
                 if isinstance(self.datasets[split_name], tuple) or isinstance(
                     self.datasets[split_name], list
                 ):
@@ -269,9 +271,10 @@ class RunnerBase:
 
             # create dataloaders
             split_names = sorted(self.datasets.keys())
-
-            datasets = [self.datasets[split] for split in split_names]
-            batch_sizes = [batch_sizes[split] for split in split_names]
+            # datasets = [self.datasets[split] for split in split_names]
+            datasets = [self.datasets[split][0] for split in split_names]
+            # batch_sizes = [batch_sizes[split] for split in split_names]
+            batch_sizes = [batch_sizes[split][0] for split in split_names]
             is_trains = [split in self.train_splits for split in split_names]
 
             # batch_sizes = [
@@ -290,7 +293,14 @@ class RunnerBase:
                     collate_fns.append([getattr(d, "collater", None) for d in dataset])
                 else:
                     collate_fns.append(getattr(dataset, "collater", None))
-
+            # logger.info(f"COLLATE FNS - {collate_fns}")
+            
+            '''
+            [runner_base.py | INFO | 2024-08-03] DATALOADER - [[<minigpt4.datasets.datasets.video_datasets.EngageNetRppgDataset object at 0x757e8c87a970>]]
+            2024-08-03 14:36:09,668 [INFO] DATALOADER - [[<minigpt4.datasets.datasets.video_datasets.EngageNetRppgDataset object at 0x757e8c87a970>]]
+            [runner_base.py | INFO | 2024-08-03] COLLATE FNS - [[<bound method BaseDataset.collater of <minigpt4.datasets.datasets.video_datasets.EngageNetRppgDataset object at 0x757e8c87a970>>]]
+            2024-08-03 14:36:09,669 [INFO] COLLATE FNS - [[<bound method BaseDataset.collater of <minigpt4.datasets.datasets.video_datasets.EngageNetRppgDataset object at 0x757e8c87a970>>]]
+            '''
             dataloaders = self.create_loaders(
                 datasets=datasets,
                 num_workers=self.config.run_cfg.num_workers,
@@ -298,9 +308,9 @@ class RunnerBase:
                 is_trains=is_trains,
                 collate_fns=collate_fns,
             )
-
+            # logger.info(f"DATALOADERS - {len(dataloaders)}")
             self._dataloaders = {k: v for k, v in zip(split_names, dataloaders)}
-
+            # logger.info(f"DATALOADERS - {self._dataloaders}")
         return self._dataloaders
 
     @property
@@ -401,12 +411,22 @@ class RunnerBase:
             self._load_checkpoint(self.resume_ckpt_path)
 
         for cur_epoch in range(self.start_epoch, self.max_epoch):
+            if cur_epoch % 10 == 0 or cur_epoch == self.max_epoch - 1:
+                # testing phase
+                logger.info("Evaluating on train set and val set")
+                test_epoch = "best" if len(self.valid_splits) > 0 else cur_epoch
+                test_logs = self.evaluate(cur_epoch=test_epoch, skip_reload=self.evaluate_only)
+                with open(os.path.join(self.output_dir, f"epoch_{cur_epoch}.json"), "w") as f:
+                    f.write(json.dumps(test_logs))
+                    
             # training phase
             if not self.evaluate_only:
                 logging.info("Start training")
                 train_stats = self.train_epoch(cur_epoch)
                 self.log_stats(split_name="train", stats=train_stats)
 
+
+                    
             # evaluation phase
             # if len(self.valid_splits) > 0 and self.config.run_cfg.video_instruction_eval:
             #     self._save_checkpoint(cur_epoch, is_best=False)
@@ -448,7 +468,9 @@ class RunnerBase:
 
         # testing phase
         test_epoch = "best" if len(self.valid_splits) > 0 else cur_epoch
-        self.evaluate(cur_epoch=test_epoch, skip_reload=self.evaluate_only)
+        test_logs = self.evaluate(cur_epoch=test_epoch, skip_reload=self.evaluate_only)
+        with open(os.path.join(self.output_dir, f"epoch_{cur_epoch + 1}.json"), "w") as f:
+            f.write(json.dumps(test_logs))
 
         total_time = time.time() - start_time
         total_time_str = str(datetime.timedelta(seconds=int(total_time)))
@@ -494,6 +516,7 @@ class RunnerBase:
                 During testing, we will use provided weights and skip reloading the best checkpoint .
         """
         data_loader = self.dataloaders.get(split_name, None)
+        logger.info(f"EVAL DATALOADER -{split_name} {data_loader}")
         assert data_loader, "data_loader for split {} is None.".format(split_name)
 
         # TODO In validation, you need to compute loss as well as metrics
@@ -515,6 +538,7 @@ class RunnerBase:
                 split_name=split_name,
                 epoch=cur_epoch,
             )
+            
     def get_validation_loader(self):
         # TODO make the path configurable
         dataset_congif="minigpt4/configs/datasets/video_chatgpt/default.yaml"
@@ -530,6 +554,7 @@ class RunnerBase:
                                 add_subtitles=config.valid['add_subtitles'],)
         validation_dataloader = DataLoader(validation_data, batch_size=1, shuffle=False)
         return validation_dataloader
+    
     @torch.no_grad()
     def custom_eval_epoch(self, cur_epoch):
         validation_dataloader=self.get_validation_loader()
@@ -553,6 +578,7 @@ class RunnerBase:
                             epoch=cur_epoch,
                         )
         return val_log
+    
     def unwrap_dist_model(self, model):
         if self.use_distributed:
             return model.module
@@ -617,6 +643,7 @@ class RunnerBase:
                 loader = PrefetchLoader(loader)
 
                 if is_train:
+                    # logger.info("IS TRAIN")
                     loader = IterLoader(loader, use_distributed=self.use_distributed)
 
             return loader

@@ -17,11 +17,12 @@ def get_arguments():
     python3 inference_engagenet.py\
         --videos-dir /home/tony/engagenet_val/videos\
         --cfg-path test_configs/mistral_test_config.yaml\
-        --ckpt /home/tony/nvme2tb/tuned_models/mistral_single_word.pth\
+        --ckpt /home/tony/nvme2tb/mistral_rppg_mamba_half/202407300139/checkpoint_49.pth\
         --num-classes 4\
         --gpu-id 1\
         --label-path /home/tony/engagenet_labels/validation_engagement_labels.json\
-        --consistency-qa /home/tony/MiniGPT4-video/gpt_evaluation/consistency_qa_engagenet.json
+        --consistency-qa /home/tony/MiniGPT4-video/gpt_evaluation/consistency_qa_engagenet.json\
+        --rppg-dir /home/tony/engagenet_val/rppg_mamba/tensors
         
     python3 inference_engagenet.py\
         --videos-dir /home/tony/engagenet_val/videos\
@@ -31,6 +32,7 @@ def get_arguments():
         --gpu-id 0\
         --label-path /home/tony/engagenet_labels/validation_engagement_labels.json\
         --consistency-qa /home/tony/MiniGPT4-video/gpt_evaluation/consistency_qa_engagenet.json
+        --rppg-dir /home/tony/engagenet_val/rppg_mamba/tensors
 
     """
     parser = argparse.ArgumentParser(description="Inference parameters")
@@ -41,6 +43,7 @@ def get_arguments():
     parser.add_argument("--max_new_tokens", type=int, default=512, help="max number of generated tokens")
     parser.add_argument("--lora_r", type=int, default=64, help="lora rank of the model")
     parser.add_argument("--lora_alpha", type=int, default=16, help="lora alpha")
+    parser.add_argument("--rppg-dir", type=str,required=False, help="location of rppg directory",default=None)
     parser.add_argument("--question",
                         type=str, 
                         default="Choose whether the student is 'not engaged','barely engaged', 'engaged', or 'highly engaged'.",
@@ -120,16 +123,26 @@ def load_metrics(num_classes:int)->torchmetrics.MetricCollection:
     ])
     return metrics
 
+def prepare_conversation(
+    vid_path:str,
+    vis_processor:object,
+    conv:CONV_VISION,
+    sys_instruct:str,
+    question:str
+)->tuple:
+    conv = CONV_VISION.copy()
+    conv.system = sys_instruct
+    
+    prepared_images,prepared_instruction = prepare_input(vis_processor,vid_path,None,question)
+    conv.append_message(conv.roles[0], prepared_instruction)
+    conv.append_message(conv.roles[1], None)
+    q = [conv.get_prompt()]
+    return prepared_images,prepared_instruction,q
+
 def main()->None:
     logger.info("Starting Inference")
     args = get_arguments()
-    # os.environ["CUDA_VISIBLE_DEVICES"] = f"{args.gpu_id}"
-    question,sys_instruct = args.question,args.sys_instruct
 
-    conv = CONV_VISION.copy()
-    conv.system = sys_instruct
-    prompt = None
-    
     with open(args.cfg_path) as file:
         config = yaml.load(file, Loader=yaml.FullLoader)
         
@@ -143,17 +156,18 @@ def main()->None:
     )
     num_classes,max_new_tokens = args.num_classes,args.max_new_tokens
     model, vis_processor = init_model(args)
-    model.to(config['run']['device'])
+    model.to(config['model']['device'])
+    
+    video_paths = os.listdir(args.videos_dir)
     
     metrics = load_metrics(args.num_classes)
-    metrics.to(config['run']['device'])
+    metrics.to(config['model']['device'])
     
     pred_samples = []
-    samples = len(os.listdir(args.videos_dir))
-    pred_table,target_table = torch.zeros(samples).to(config['run']['device']),\
-        torch.zeros(samples).to(config['run']['device'])
-
-    for sample,vid_path in enumerate(os.listdir(args.videos_dir)):
+    samples = len(video_paths)
+    logger.info(f"RPPG INFERENCE - {args.rppg_dir is not None}")
+    rppg = None
+    for sample,vid_path in enumerate(video_paths):
         if not ".mp4" in vid_path:
             continue
         
@@ -161,28 +175,56 @@ def main()->None:
         vid_path = os.path.join(args.videos_dir, vid_path)
         logger.info("Processing video - {}".format(vid_id))
         
-        prepared_images,prepared_instruction = prepare_input(vis_processor,vid_path,None,question)
-        if sample == 0:
-            conv.append_message(conv.roles[0], prepared_instruction)
-            conv.append_message(conv.roles[1], None)
-            prompt = [conv.get_prompt()]
+        rppg_path = os.path.join(args.rppg_dir, f"{vid_id}_0.pt")
+        if args.rppg_dir is not None and os.path.exists(rppg_path):
+            rppg = torch.load(rppg_path)
+            samples['rppg'] = rppg.to(config['model']['device']) 
         
         
-        pred_ans = model.predict_class({
+        prepared_images,q_prepared_instruction,q_prompt = prepare_conversation(vid_path,vis_processor,CONV_VISION,args.sys_instruct,args.question)
+        a1 = model.generate(
+            prepared_images, 
+            q_prompt, 
+            max_new_tokens=max_new_tokens, 
+            do_sample=True, 
+            lengths=[len(prepared_images)],
+            num_beams=1,
+            rppg=rppg
+        ) 
+        
+        q1,q2 = qa_pairs[vid_id]['Q1'],qa_pairs[vid_id]['Q2']
+        prepared_images,q1_prepared_instruction,q1_prompt = prepare_conversation(vid_path,vis_processor,CONV_VISION,args.sys_instruct,q1)
+        a1 = model.generate(
+            prepared_images, 
+            q1_prompt, 
+            max_new_tokens=max_new_tokens, 
+            do_sample=True, 
+            lengths=[len(prepared_images)],
+            num_beams=1,
+            rppg=rppg
+        ) 
+        prepared_images,q2_prepared_instruction,q2_prompt = prepare_conversation(vid_path,vis_processor,CONV_VISION,args.sys_instruct,q2)
+        a2 = model.generate(
+            prepared_images, 
+            q2_prompt, 
+            max_new_tokens=max_new_tokens, 
+            do_sample=True, 
+            lengths=[len(prepared_images)],
+            num_beams=1,
+            rppg=rppg
+        )    
+        samples = {
             "image":prepared_images.unsqueeze(0),
-            "instruction_input":[prepared_instruction],
+            "instruction_input":[q_prepared_instruction],
             "choices":classes,
             "num_choices":[num_classes],
             "length":[45],
-        })
+        }
+        pred_ans = model.predict_class(samples)
         logger.info(f"{sample}: {pred_ans[0]} - {label[vid_id]}")
-        pred_table[sample],target_table[sample] = mapping[pred_ans[0]],mapping[label[vid_id]]         
         
-        q1,q2 = qa_pairs[vid_id]['Q1'],qa_pairs[vid_id]['Q2']
-        a1 = run(vid_path, q1, model, vis_processor,max_new_tokens, gen_subtitles=False)
-        a2 = run(vid_path, q2, model, vis_processor,max_new_tokens, gen_subtitles=False)
-        
-        performance = metrics.forward(pred_table[:sample + 1], target_table[:sample + 1])
+        pred,target = torch.tensor([mapping[pred_ans[0]]]).to(config['model']['device']),torch.tensor([mapping[label[vid_id]]]).to(config['model']['device'])
+        performance = metrics.forward(pred,target)
         logger.info(f"ACC - {performance['MulticlassAccuracy']}")
         logger.info(f"PR - {performance['MulticlassPrecision']}")
         logger.info(f"RE - {performance['MulticlassRecall']}")
@@ -190,7 +232,7 @@ def main()->None:
         
         pred_set:dict={
             'video_name':vid_id,
-            'Q':question,
+            'Q':args.question,
             'Q1': q1,
             'Q2':q2,
             'A':label[vid_id],
@@ -199,7 +241,8 @@ def main()->None:
             'pred2':a2
         }
         pred_samples.append(pred_set)
-    
+        rppg = None
+        
     performance = metrics.compute()
     logger.info(f"FINAL ACC - {performance['MulticlassAccuracy']}")
     logger.info(f"FINAL PR - {performance['MulticlassPrecision']}")
