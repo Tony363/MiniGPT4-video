@@ -261,75 +261,27 @@ if __name__ == "__main__":
     DPO: /home/lupang/minigptv2/minigpt4/output/minigpt4_stage2_finetune/20240415103/checkpoint_63.pth
     Original prompt: /home/lupang/minigptv2/minigpt4/output/minigpt4_stage2_finetune/20240415103/original_prompt.pth
     
-    mistral
-    [inference_engagenet.py | INFO | 2024-07-10] F1 - 0.6666666865348816
-    [inference_engagenet.py | INFO | 2024-07-10] ACC - 0.6757702827453613
-    [inference_engagenet.py | INFO | 2024-07-10] PR - 0.7449684739112854
-    [inference_engagenet.py | INFO | 2024-07-10] RE - 0.6757702827453613
-    [inference_engagenet.py | INFO | 2024-07-10] F1 - 0.6665439009666443
-    
+    mistral 
     /home/tony/MiniGPT4-video/gpt_evaluation/mistral_test_config_eval.json 1071
-    completed_files: 0
-    incomplete_files: 1071
-    completed_files: 1071
-    incomplete_files: 0
-    All evaluation completed!
     Average score for correctness: 4.010270774976657
-    completed_files: 0
-    incomplete_files: 1071
-    completed_files: 1071
-    incomplete_files: 0
-    All evaluation completed!
     Average score for detailed orientation: 3.7282913165266107
-    completed_files: 0
-    incomplete_files: 1071
-    completed_files: 1071
-    incomplete_files: 0
-    All evaluation completed!
     Average score for contextual understanding: 3.9719887955182074
-    completed_files: 0
-    incomplete_files: 1071
-    completed_files: 1071
-    incomplete_files: 0
-    All evaluation completed!
     Average score temporal understanding: 3.918767507002801
     All evaluations completed!
     
-    llama2
-    [inference_engagenet.py | INFO | 2024-07-10] F1 - 0.6666666865348816                                                                                                  
-    [inference_engagenet.py | INFO | 2024-07-10] ACC - 0.6104108095169067                                                                                                 
-    [inference_engagenet.py | INFO | 2024-07-10] PR - 0.6712498664855957                                                                                                  
-    [inference_engagenet.py | INFO | 2024-07-10] RE - 0.6104108095169067                                                                                                  
-    [inference_engagenet.py | INFO | 2024-07-10] F1 - 0.5968020558357239                                                                                                  
+    llama2                                                                                                
     /home/tony/MiniGPT4-video/gpt_evaluation/llama2_test_config_eval.json 1071
-    completed_files: 0
-    incomplete_files: 1071
-    completed_files: 1071
-    incomplete_files: 0
-    All evaluation completed!
     Average score for correctness: 3.138188608776844
-    completed_files: 0
-    incomplete_files: 1071
-    Error processing file 'subject_74_65ovfrvz97_vid_1_16_0': Gateway timeout. {"error":{"code":524,"message":"Gateway timeout.","param":null,"type":"cf_gateway_timeout"}} 524 {'error': {'code': 524, 'message': 'Gateway timeout.', 'param': None, 'type': 'cf_gateway_timeout'}} {'Date': 'Tue, 16 Jul 2024 13:09:29 GMT', 'Content-Type': 'application/json', 'Content-Length': '92', 'Connection': 'keep-alive', 'Strict-Transport-Security': 'max-age=15552000; includeSubDomains; preload', 'X-Content-Type-Options': 'nosniff', 'X-Frame-Options': 'SAMEORIGIN', 'Referrer-Policy': 'same-origin', 'Cache-Control': 'private, max-age=0, no-store, no-cache, must-revalidate, post-check=0, pre-check=0', 'Expires': 'Thu, 01 Jan 1970 00:00:01 GMT', 'Server': 'cloudflare', 'CF-RAY': '8a4237ac3adb1986-EWR', 'alt-svc': 'h3=":443"; ma=86400'}
-    completed_files: 1070
-    incomplete_files: 1
-    completed_files: 1071
-    incomplete_files: 0
-    All evaluation completed!
     Average score for detailed orientation: 3.2324929971988796
-    completed_files: 0
-    incomplete_files: 1071
-    completed_files: 1071
-    incomplete_files: 0
-    All evaluation completed!
     Average score for contextual understanding: 3.4313725490196076
-    completed_files: 0
-    incomplete_files: 1071
-    completed_files: 1071
-    incomplete_files: 0
-    All evaluation completed!
     Average score temporal understanding: 2.955182072829132
-    All evaluations completed!
+    
+    mistral-rppg
+    Average score for correctness: 3.5676937441643326                                                                                   
+    Average score for detailed orientation: 3.281045751633987                                                                            
+    Average score for contextual understanding: 3.8823529411764706                                                                       
+    Average score temporal understanding: 3.4248366013071894
+    Average score for consistency: 2.7413632119514473
     '''
     program = os.path.basename(__file__)
     if os.path.exists(f"logs/{os.path.splitext(program)[0]}.log"):

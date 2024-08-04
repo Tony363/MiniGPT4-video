@@ -18,12 +18,13 @@ from minigpt4.datasets.data_utils import prepare_sample
 import wandb
 import openai
 import ast
-from dotenv import load_dotenv
+from dotenv import load_dotenv,find_dotenv
 import os
 
 # Load the .env file
-load_dotenv()
-openai.api_key = os.getenv("OPENAI_API_KEY")
+env_path = find_dotenv('/home/tony/MiniGPT4-video/.env')
+load_dotenv(env_path)
+openai.api_key = os.getenv("API_KEY")
 
 from utils import init_logger
 import os
