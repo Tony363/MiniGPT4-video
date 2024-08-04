@@ -51,7 +51,7 @@ run:
   warmup_steps: 875
   iters_per_epoch: 875
 
-  test_splits: ["train","eval"]
+  test_splits: ["eval"]
   seed: 42
   output_dir: "training_output/engagenet/mistral_rppg_former"
 
@@ -59,7 +59,7 @@ run:
   resume_ckpt_path: null
 
   evaluate: False
-  train_splits: ["train","eval"]
+  train_splits: ["train"]
 
   device: "cuda"
   world_size: 1

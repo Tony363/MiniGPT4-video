@@ -310,7 +310,7 @@ class RunnerBase:
             )
             # logger.info(f"DATALOADERS - {len(dataloaders)}")
             self._dataloaders = {k: v for k, v in zip(split_names, dataloaders)}
-            # logger.info(f"DATALOADERS - {self._dataloaders}")
+            logger.info(f"DATALOADERS - {self._dataloaders}")
         return self._dataloaders
 
     @property
