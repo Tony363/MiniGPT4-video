@@ -244,8 +244,8 @@ class MiniGPT4_llama_v2_Rppg(Blip2Base):
         ]
         seg_embs = [self.embed_tokens(seg_t) for seg_t in seg_tokens]
         
-        rppg_interval = len(img_list)//rppg.shape[1]
         if rppg is not None:
+            rppg_interval = len(img_list)//rppg.shape[1]
             mixed_embs = []
             for idx,pair in enumerate(zip(seg_embs[:-1], img_list)):
                 for emb in pair:
@@ -318,7 +318,8 @@ class MiniGPT4_llama_v2_Rppg(Blip2Base):
                             p_embed, 
                             each_img_embed[None][:, idx*pn:(idx+1)*pn],
                             rppg_embed,
-                            rppg[:,idx//rppg_interval,:].unsqueeze(0)
+                            # rppg[:,idx//rppg_interval,:].unsqueeze(0)
+                            rppg
                         ], dim=1)
                         interleave_emb.append(m_emb)
                     else:
@@ -448,8 +449,8 @@ class MiniGPT4_llama_v2_Rppg(Blip2Base):
         if 'rppg' in samples and not (samples['rppg'] == 0).all():
             # logger.info(f"RPPG INPUT - {samples['rppg'].shape}")
             rppg = samples['rppg']
-            if rppg.shape[0] < 2:
-                rppg = rppg.tile((2,1))
+            # if rppg.shape[0] < 2:
+            #     rppg = rppg.tile((2,1))
             rppg = self.rppg_proj.encode(rppg)[0].unsqueeze(0)
             # rppg = torch.ones(1,1,5,4096,dtype=torch.int8).to("cuda:0")
             # logger.info(f"RPPG ENCODE {rppg.shape}")
@@ -483,7 +484,7 @@ class MiniGPT4_llama_v2_Rppg(Blip2Base):
             if self.chat_template:
                 instruction = ["[INST] " + instruct + "[/INST]" for instruct in instruction]
                 
-            if 'length' in samples and not (samples['rppg'] == 0).all():
+            if 'length' in samples and 'rppg' in samples and not (samples['rppg'] == 0).all():
                 bsz, pn, hs = img_embeds.shape
                 img_embeds = img_embeds.reshape(len(samples['image']), -1, pn, hs) # (200,64,4096) -> (4,50,64,4096)
                 cond_embeds, cond_atts = self.prompt_wrap(img_embeds, img_atts, instruction, lengths=samples['length'],rppg=rppg)
@@ -599,9 +600,10 @@ class MiniGPT4_llama_v2_Rppg(Blip2Base):
             # logger.info(f"IMG EMBEDS  - {img_embeds.shape} {atts_img.shape}")
             
         if rppg is not None:
-            if rppg.shape[0] < 2:
-                rppg = rppg.tile((2,1))
+            # if rppg.shape[0] < 2:
+            #     rppg = rppg.tile((2,1))
             rppgs = [self.rppg_proj.encode(rppg)[0].unsqueeze(0)]
+            logger.info(f"RPPG EMBEDDING - {rppgs[0].shape}")
             # rppgs = [torch.ones(1,5,4096,dtype=torch.int8).to(self._device)]    
         
         if lengths is not None:
@@ -758,7 +760,7 @@ class MiniGPT4_llama_v2_Rppg(Blip2Base):
             all_losses.append(loss)
             torch.cuda.empty_cache()
         all_losses = torch.cat(all_losses, dim=-1)
-        logger.info(f"ALL LOSSES - {all_losses} {all_losses.shape}")
+        # logger.info(f"ALL LOSSES - {all_losses} {all_losses.shape}")
         if num_cand is not None:
             for i in range(all_losses.shape[0]):
                 all_losses[i, num_cand[i]:] = 9999
@@ -968,7 +970,6 @@ class MiniGPT4_llama_v2(Blip2Base):
         self.token_pooling = token_pooling
         self.remove_template = remove_template
 
-        logger.info(f"LOW RESOURCE - {low_resource} {device} ")
         self._device = device
         logger.info(f"token pooling {self.token_pooling}")
 
@@ -1567,12 +1568,12 @@ class MiniGPT4_llama_v2(Blip2Base):
             all_losses.append(loss)
             torch.cuda.empty_cache()
         all_losses = torch.cat(all_losses, dim=-1)
-        logger.info(f"ALL LOSSES - {all_losses} {all_losses.shape}")
+        # logger.info(f"ALL LOSSES - {all_losses} {all_losses.shape}")
         if num_cand is not None:
             for i in range(all_losses.shape[0]):
                 all_losses[i, num_cand[i]:] = 9999
         output_class_ranks = torch.argsort(all_losses, dim=-1)
-        logger.info(f"OUTPUT CLASS RANKS - {output_class_ranks}")
+        # logger.info(f"OUTPUT CLASS RANKS - {output_class_ranks}")
         return output_class_ranks.tolist()
 
     def predict_answers(
@@ -1665,7 +1666,9 @@ class MiniGPT4_llama_v2(Blip2Base):
         freeze_vit = cfg.get("freeze_vit", True)
         freeze_qformer = cfg.get("freeze_qformer", True)
         low_resource = cfg.get("low_resource", False)
-        # low_resource = False
+        # low_resource = True
+        logger.info(f"LOW RESOURCE - {low_resource}")
+
         prompt_path = cfg.get("prompt_path", "")
         prompt_template = cfg.get("prompt_template", "")
         max_txt_len = cfg.get("max_txt_len", 300)

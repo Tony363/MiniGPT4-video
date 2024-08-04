@@ -9,8 +9,8 @@
 #SBATCH --cpus-per-task=16
 ## run the application:
 job_name="test" # Name of the experiment
-cfg_path="train_configs/224_v2_mistral_engagenet_stage_2.yaml"  
-# cfg_path="train_configs/224_v2_mistral_engagenet_rppg_stage_2.yaml"  
+# cfg_path="train_configs/224_v2_mistral_engagenet_stage_2.yaml"  
+cfg_path="train_configs/224_v2_mistral_engagenet_rppg_stage_2.yaml"  
 
 # cfg_path="train_configs/224_v2_llama2_engagenet_stage_2.yaml" 
 number_of_gpus=1 # number of gpus
@@ -19,8 +19,8 @@ number_of_gpus=1 # number of gpus
 read LOWERPORT UPPERPORT < /proc/sys/net/ipv4/ip_local_port_range
 while :
 do
-        # PORT="`shuf -i $LOWERPORT-$UPPERPORT -n 1`"
-        PORT="12345"
+        PORT="`shuf -i $LOWERPORT-$UPPERPORT -n 1`"
+        # PORT="12345"
         ss -lpn | grep -q ":$PORT " || break
 done
 echo "Port is $PORT"

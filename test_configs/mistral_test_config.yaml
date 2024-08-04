@@ -1,5 +1,5 @@
 model:
-  arch: mini_gpt4_llama_v2
+  arch: mini_gpt4_llama_v2_rppg
   model_type: pretrain_vicuna
   freeze_vit: True
   freeze_qformer: True
@@ -8,7 +8,7 @@ model:
   image_size: 224
   end_sym: "</s>"
   llama_model: "mistralai/Mistral-7B-Instruct-v0.2"
-  ckpt: "/home/tony/nvme2tb/tuned_models/mistral_single_word.pth" 
+  ckpt: "/home/tony/nvme2tb/mistral_rppg_mamba_half/202407300139/checkpoint_49.pth" 
   #"checkpoints/video_mistral_all_checkpoint_last.pth"
   use_grad_checkpoint: True
   chat_template: True
@@ -20,7 +20,7 @@ model:
   device: "cuda:1"
 
 datasets:
-  engagenet: #99378 row  - 13224 video
+  engagenet_rppg: #99378 row  - 13224 video
     batch_size: 1
     vis_processor:
       train:

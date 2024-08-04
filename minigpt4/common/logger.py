@@ -14,7 +14,12 @@ import torch
 import torch.distributed as dist
 
 from minigpt4.common import dist_utils
-
+from utils import init_logger
+import os
+program = os.path.basename(__file__)
+if os.path.exists(f"../../logs/{os.path.splitext(program)[0]}.log"):
+    os.remove(f"../../logs/{os.path.splitext(program)[0]}.log")
+logger = init_logger(program)
 
 class SmoothedValue(object):
     """Track a series of values and provide access to smoothed values over a
@@ -148,7 +153,7 @@ class MetricLogger(object):
                 eta_seconds = iter_time.global_avg * (len(iterable) - i)
                 eta_string = str(datetime.timedelta(seconds=int(eta_seconds)))
                 if torch.cuda.is_available():
-                    print(
+                    logger.info(
                         log_msg.format(
                             i,
                             len(iterable),
@@ -160,7 +165,7 @@ class MetricLogger(object):
                         )
                     )
                 else:
-                    print(
+                    logger.info(
                         log_msg.format(
                             i,
                             len(iterable),
@@ -174,7 +179,7 @@ class MetricLogger(object):
             end = time.time()
         total_time = time.time() - start_time
         total_time_str = str(datetime.timedelta(seconds=int(total_time)))
-        print(
+        logger.info(
             "{} Total time: {} ({:.4f} s / it)".format(
                 header, total_time_str, total_time / len(iterable)
             )

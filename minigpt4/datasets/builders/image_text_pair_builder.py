@@ -28,8 +28,8 @@ from minigpt4.datasets.datasets.nav_dataset import NavR2RDataset
 from utils import init_logger
 import os
 program = os.path.basename(__file__)
-if os.path.exists(f"logs/{os.path.splitext(program)[0]}.log"):
-    os.remove(f"logs/{os.path.splitext(program)[0]}.log")
+if os.path.exists(f"../../logs/{os.path.splitext(program)[0]}.log"):
+    os.remove(f"../../logs/{os.path.splitext(program)[0]}.log")
 logger = init_logger(program)
 
 @registry.register_builder("yifan_reasoning")
@@ -908,7 +908,8 @@ class EngageNetBuilder(BaseDatasetBuilder):
 @registry.register_builder("engagenet_rppg")
 class EngageNetBuilder(BaseDatasetBuilder):
     train_dataset_cls = EngageNetRppgDataset # Add the dataset class here
-
+    val_dataset_cls = EngageNetRppgDataset
+    
     DATASET_CONFIG_DICT = {
         "default": "configs/datasets/engagenet_rppg/default.yaml",
     }
@@ -934,7 +935,15 @@ class EngageNetBuilder(BaseDatasetBuilder):
             model_name=build_info.model_name, # Add model name here (llama2 or mistral)
             rppg_dir=build_info.rppg_dir
         )
-
+        datasets['eval'] = self.val_dataset_cls(
+            vis_processor=self.vis_processors["eval"], # Add the vis_processor here
+            text_processor=self.text_processors["eval"], # Add the text_processor here
+            vis_root=build_info.vis_root_val, # Add videos path here
+            ann_paths=build_info.ann_paths_val, # Add annotations path here
+            subtitles_path=build_info.subtitles_path, # Add subtitles path here
+            model_name=build_info.model_name, # Add model name here (llama2 or mistral)
+            rppg_dir=build_info.rppg_dir_val
+        )
         return datasets
 
 @registry.register_builder("Name of the builder as in the config file")

@@ -17,6 +17,7 @@ model:
   use_grad_checkpoint_llm: True
   max_context_len: 3600 # 7200
   rppg_encoder_weights: "minigpt4/autoencoder/model_weights_RhytmFormer.pth"
+  device: "cuda:0"
 
 datasets:
   engagenet_rppg: #99378 row  - 13224 video
@@ -25,8 +26,13 @@ datasets:
       train:
         name: "blip2_image_train"
         image_size: 224
+      eval:
+        name: "blip2_image_train"
+        image_size: 224
     text_processor:
       train:
+        name: "blip_caption"
+      eval:
         name: "blip_caption"
     sample_ratio: 200
 
@@ -41,18 +47,19 @@ run:
 
   weight_decay: 0.05
   max_epoch: 50
-  num_workers: 16
+  num_workers: 0
   warmup_steps: 875
   iters_per_epoch: 875
 
+  test_splits: ["train","eval"]
   seed: 42
-  output_dir: "training_output/engagenet/mistral_rppg"
+  output_dir: "training_output/engagenet/mistral_rppg_former"
 
   amp: True
   resume_ckpt_path: null
 
   evaluate: False
-  train_splits: ["train"]
+  train_splits: ["train","eval"]
 
   device: "cuda"
   world_size: 1

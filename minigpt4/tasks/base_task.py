@@ -18,7 +18,12 @@ from minigpt4.datasets.data_utils import prepare_sample
 import wandb
 import openai
 import ast
-openai.api_key_path = "/home/ataallka/chatgpt_api.txt"
+from dotenv import load_dotenv
+import os
+
+# Load the .env file
+load_dotenv()
+openai.api_key = os.getenv("OPENAI_API_KEY")
 
 from utils import init_logger
 import os
@@ -86,7 +91,13 @@ class BaseTask:
         return loss
 
     def valid_step(self, model, samples):
-        answers = model(samples)['answers']
+        rppg = samples['rppg'].float() if not (samples['rppg'] == 0).all() else None
+        answers = model.generate(
+            images=samples['image'],
+            texts=samples['instruction_input'],
+            lengths=samples['length'],
+            rppg=rppg,
+        )
         return answers
 
     def before_evaluation(self, model, dataset, **kwargs):
@@ -96,8 +107,8 @@ class BaseTask:
         try:
             # Compute the correctness score
             completion = openai.ChatCompletion.create(
-                # model="gpt-3.5-turbo",
-                model='gpt-4',
+                model="gpt-4o-mini",
+                # model='gpt-4',
                 messages=[
                     {
                         "role": "system",
@@ -165,7 +176,9 @@ class BaseTask:
         logger.info_freq = 10
         results = []
         for samples in metric_logger.log_every(data_loader, logger.info_freq, header):
+            
             samples = prepare_sample(samples, cuda_enabled=cuda_enabled)
+            # logger.info(f"EVAL SAMPLES - {samples.keys()} {type(samples)}")
             eval_output = self.valid_step(model=model, samples=samples)
             for i,pred in enumerate(eval_output):
                 res={}
