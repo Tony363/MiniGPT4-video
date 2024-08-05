@@ -234,7 +234,6 @@ class RunnerBase:
             datasets, batch_sizes = reorg_datasets_by_split(self.datasets, batch_sizes)
             self.datasets = datasets
             # self.datasets = concat_datasets(datasets)
-            # logger.info(f"DATASETS - {self.datasets}")
             # logger.info dataset statistics after concatenation/chaining
             for split_name in self.datasets:
                 logger.info(f"SPLIT NAME {split_name}")
@@ -293,14 +292,8 @@ class RunnerBase:
                     collate_fns.append([getattr(d, "collater", None) for d in dataset])
                 else:
                     collate_fns.append(getattr(dataset, "collater", None))
-            # logger.info(f"COLLATE FNS - {collate_fns}")
             
-            '''
-            [runner_base.py | INFO | 2024-08-03] DATALOADER - [[<minigpt4.datasets.datasets.video_datasets.EngageNetRppgDataset object at 0x757e8c87a970>]]
-            2024-08-03 14:36:09,668 [INFO] DATALOADER - [[<minigpt4.datasets.datasets.video_datasets.EngageNetRppgDataset object at 0x757e8c87a970>]]
-            [runner_base.py | INFO | 2024-08-03] COLLATE FNS - [[<bound method BaseDataset.collater of <minigpt4.datasets.datasets.video_datasets.EngageNetRppgDataset object at 0x757e8c87a970>>]]
-            2024-08-03 14:36:09,669 [INFO] COLLATE FNS - [[<bound method BaseDataset.collater of <minigpt4.datasets.datasets.video_datasets.EngageNetRppgDataset object at 0x757e8c87a970>>]]
-            '''
+
             dataloaders = self.create_loaders(
                 datasets=datasets,
                 num_workers=self.config.run_cfg.num_workers,
@@ -308,7 +301,6 @@ class RunnerBase:
                 is_trains=is_trains,
                 collate_fns=collate_fns,
             )
-            # logger.info(f"DATALOADERS - {len(dataloaders)}")
             self._dataloaders = {k: v for k, v in zip(split_names, dataloaders)}
             logger.info(f"DATALOADERS - {self._dataloaders}")
         return self._dataloaders

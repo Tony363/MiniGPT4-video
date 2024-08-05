@@ -31,7 +31,7 @@ def annotate(prediction_set, caption_files, output_dir):
         try:
             # Compute the detailed-orientation score
             completion = openai.ChatCompletion.create(
-                model="gpt-3.5-turbo",
+                model="gpt-4o-mini",
                 messages=[
                     {
                         "role": "system",

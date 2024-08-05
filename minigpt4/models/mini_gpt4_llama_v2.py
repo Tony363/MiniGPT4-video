@@ -182,7 +182,6 @@ class MiniGPT4_llama_v2_Rppg(Blip2Base):
        
         logger.info('Loading LLAMA Done')
 
-        # logger.info(f"HIDDEN SIZE - {self.llama_model.config.hidden_size}")
         if self.token_pooling:
             self.llama_proj = nn.Linear(
                 1408*4, self.llama_model.config.hidden_size
@@ -199,7 +198,7 @@ class MiniGPT4_llama_v2_Rppg(Blip2Base):
             param = param.to(self._device)
         self.rppg_proj = self.rppg_proj.to(self._device)
         self.rppg_proj.eval()
-        self.rppg_proj.train = disabled_train
+        self.rppg_proj.train = disabled_train # disable train so no batchnorm1d error during training
         logger.info("RPPG PROJ LOADED...")
 
         self.max_txt_len = max_txt_len
@@ -251,28 +250,22 @@ class MiniGPT4_llama_v2_Rppg(Blip2Base):
                 for emb in pair:
                     mixed_embs.append(emb)
                 if idx % rppg_interval == 0:
-                    logger.info("WITH RPPG")
+                    '''
+                    crux of the logic to append rppg tag and rppg upsampled tensor for generate function
+                    rppg is appended every rppg_interval
+                    if 45 images are there, rppg will be appended every 9th image
+                    '''
                     rppg_tag = self.llama_tokenizer("<rppg>", return_tensors="pt", add_special_tokens=False).to(self._device)
                     rppg_tag_embed = self.embed_tokens(rppg_tag.input_ids)
-                    logger.info(f"RPPG TOKEN - {rppg_tag_embed.shape}")
                     mixed_embs.append(rppg_tag_embed)
-                    mixed_embs.append(rppg[:, idx//rppg_interval,:].unsqueeze(0))
+                    mixed_embs.append(rppg)
+                    # mixed_embs.append(rppg[:, idx//rppg_interval,:].unsqueeze(0))
                     
             mixed_embs += [seg_embs[-1]]
         else:
             mixed_embs = [emb for pair in zip(seg_embs[:-1], img_list) for emb in pair] + [seg_embs[-1]]
-        
-        # for i in range(0,len(mixed_embs)-1,2):
-        #     print(f"CONTENT - {mixed_embs[i].shape} {mixed_embs[i+1].shape}")
-            
-        # print(f"CONTENT - { {mixed_embs[-3].shape}} {mixed_embs[-2].shape}")
-        # print(f"CONTENT - {mixed_embs[-1].shape}")
-        # print(f"IMG_LIST - {len(img_list)} {len(seg_embs)}")
-        # print(f"EMBEDDING TEXT -  {len(mixed_embs) }  {mixed_embs[0].shape}")   
-        
-
-        mixed_embs = torch.cat(mixed_embs, dim=1)
-        # print(f"MIXED EMBS - {mixed_embs.shape}")
+     
+        mixed_embs = torch.cat(mixed_embs, dim=1) # final output sequence tokens for language model
         return mixed_embs
 
     def prompt_wrap(self, img_embeds, atts_img, prompts, lengths=None,rppg=None):
@@ -305,13 +298,17 @@ class MiniGPT4_llama_v2_Rppg(Blip2Base):
                 p_segs = each_prompt.split('<ImageHere>')
                 if rppg is not None:
                     rppg_interval = (len(p_segs) - 1)//rppg.shape[1]
-                    # logger.info(f"PROMPT WRAP {len(p_segs) - 1}/ {rppg.shape[1]} = {rppg_interval}")
-                    # print(img_embeds.dtype,atts_img.dtype,rppg.dtype)
+    
                 interleave_emb = []
                 for idx, seg in enumerate(p_segs[:-1]):
                     p_tokens = self.llama_tokenizer(seg, return_tensors="pt", add_special_tokens=False).to(img_embeds.device)
                     p_embed = self.embed_tokens(p_tokens.input_ids)
                     if rppg is not None and idx % rppg_interval == 0 :
+                        """
+                        crux of the logic for forward pass to append rppg tag and rppg upsampled tensor
+                        rppg is appended every rppg_interval
+                        if 45 images are there, rppg will be appended every 9th image
+                        """
                         rppg_tag = self.llama_tokenizer("<rppg>", return_tensors="pt", add_special_tokens=False).to(img_embeds.device)
                         rppg_embed = self.embed_tokens(rppg_tag.input_ids)
                         m_emb = torch.cat([
@@ -352,13 +349,13 @@ class MiniGPT4_llama_v2_Rppg(Blip2Base):
         """
         Concatenate the batched input embedding and batched output embedding together.
         Both the input and the output embedding should be right padded.
+        
+        Essentially forward pass on correct answer and input embedding for language model
         """
 
         input_lens = []
         cat_embs = []
         cat_atts = []
-        # logger.info(f"input_embs size -  {input_embs.size(0)}")
-        # logger.info(f"OUTPUT EMBS - {output_embs.shape}")
         for i in range(input_embs.size(0)):
             input_len = input_atts[i].sum()
             input_lens.append(input_len)
@@ -443,17 +440,16 @@ class MiniGPT4_llama_v2_Rppg(Blip2Base):
         ### prepare input tokens
         if 'image' in samples:
             img_embeds, img_atts = self.encode_img(samples["image"])
-            # logger.info(f"IMAGE EMBED - {img_embeds.shape}")
         else:
             img_embeds = img_atts = None
         if 'rppg' in samples and not (samples['rppg'] == 0).all():
-            # logger.info(f"RPPG INPUT - {samples['rppg'].shape}")
+            """
+            encodes rppg
+            """
             rppg = samples['rppg']
-            # if rppg.shape[0] < 2:
-            #     rppg = rppg.tile((2,1))
             rppg = self.rppg_proj.encode(rppg)[0].unsqueeze(0)
             # rppg = torch.ones(1,1,5,4096,dtype=torch.int8).to("cuda:0")
-            # logger.info(f"RPPG ENCODE {rppg.shape}")
+
             
         if 'conv_q' in samples:
             # handeling conversation datasets
@@ -485,10 +481,16 @@ class MiniGPT4_llama_v2_Rppg(Blip2Base):
                 instruction = ["[INST] " + instruct + "[/INST]" for instruct in instruction]
                 
             if 'length' in samples and 'rppg' in samples and not (samples['rppg'] == 0).all():
+                """
+                to go to prompt wrapping of images, prompt and rppg with fixed context window
+                """
                 bsz, pn, hs = img_embeds.shape
                 img_embeds = img_embeds.reshape(len(samples['image']), -1, pn, hs) # (200,64,4096) -> (4,50,64,4096)
                 cond_embeds, cond_atts = self.prompt_wrap(img_embeds, img_atts, instruction, lengths=samples['length'],rppg=rppg)
             elif 'rppg' in samples and not (samples['rppg'] == 0).all():
+                """
+                to go to prompt wrapping of images, prompt and rppg
+                """
                 cond_embeds, cond_atts = self.prompt_wrap(img_embeds, img_atts, instruction,rppg=rppg)
             elif 'length' in samples:
                 # the input is a image train (like videos)
@@ -524,10 +526,6 @@ class MiniGPT4_llama_v2_Rppg(Blip2Base):
         return cond_embeds, cond_atts, regress_embeds, regress_atts, part_targets
 
     def forward(self, samples, reduction="mean"):
-        # logger.info(f"IMAGE {samples['image'].shape}")
-        # logger.info(f"PROMPT {samples['instruction_input']} {type(samples['instruction_input'])}")
-        # logger.info(f"LENGTH {samples['length']}")
-        # logger.info(f"RPPG: {samples['rppg'].shape} {samples['rppg'].dtype}")
         # prepare the embedding to condition and the embedding to regress
         cond_embeds, cond_atts, regress_embeds, regress_atts, part_targets = \
             self.preparing_embedding(samples)
@@ -549,7 +547,7 @@ class MiniGPT4_llama_v2_Rppg(Blip2Base):
                              dtype=torch.long).to(self._device).fill_(-100)
         for i, target in enumerate(part_targets):
             targets[i, input_lens[i]+1:input_lens[i]+len(target)+1] = target  # plus 1 for bos
-        # logger.info(f"INPUTS EMBEDS - {inputs_embeds.shape}")
+            
         with self.maybe_autocast():
             outputs = self.llama_model(
                 inputs_embeds=inputs_embeds,
@@ -590,20 +588,19 @@ class MiniGPT4_llama_v2_Rppg(Blip2Base):
             stops=[torch.tensor([i]).to(self._device) for i in stop_words_ids])])
         if img_embeds is None:
             img_embeds, atts_img = self.encode_img(images.to(self._device))
-            # logger.info(f"IMG EMBEDS  - {img_embeds.shape} {atts_img.shape}")
         else:
             # Use images features from the input(4,45,64,5632)
             img_embeds = img_embeds.reshape(-1, *img_embeds.shape[-2:])
             img_embeds= img_embeds.to(self._device)
             img_embeds = self.llama_proj(img_embeds) # project to llama input size (200,64,5632) -> (200,64,4096)
             atts_img = torch.ones(img_embeds.size()[:-1], dtype=torch.long).to(self._device)
-            # logger.info(f"IMG EMBEDS  - {img_embeds.shape} {atts_img.shape}")
             
         if rppg is not None:
-            # if rppg.shape[0] < 2:
-            #     rppg = rppg.tile((2,1))
-            rppgs = [self.rppg_proj.encode(rppg)[0].unsqueeze(0)]
-            logger.info(f"RPPG EMBEDDING - {rppgs[0].shape}")
+            """
+            encode batches number of rppgs
+            """
+            rppg = rppg.flatten().unsqueeze(0).to(self._device)
+            rppgs = [self.rppg_proj.encode(rppg)]
             # rppgs = [torch.ones(1,5,4096,dtype=torch.int8).to(self._device)]    
         
         if lengths is not None:
@@ -611,12 +608,13 @@ class MiniGPT4_llama_v2_Rppg(Blip2Base):
             img_embeds = img_embeds.reshape(len(lengths), -1, img_embeds.shape[-2], img_embeds.shape[-1])
             for idx, img_embed in enumerate(img_embeds):
                 image_lists.append([img_embed[i][None] for i in range(lengths[idx])])
-            # logger.info(image_lists[0][0].shape)
         else:
             image_lists = [[image_emb[None]] for image_emb in img_embeds]
         assert len(texts) == len(image_lists)
-        # logger.info(f"TEXTS - {texts} {len(texts)} {len(image_lists)}")
         if rppg is not None:
+            """
+            wrap the images, prompts and rppg by batches
+            """
             batch_embs = [self.get_context_emb(text, img_list,rppg) for text, img_list,rppg in zip(texts, image_lists,rppgs)]
         else:
             batch_embs = [self.get_context_emb(text, img_list) for text, img_list in zip(texts, image_lists)]
@@ -626,7 +624,6 @@ class MiniGPT4_llama_v2_Rppg(Blip2Base):
         emb_dim = batch_embs[0].shape[2]
         dtype = batch_embs[0].dtype
         device = batch_embs[0].device
-        # logger.info(f"EMBS INPUT - {batch_size} {max_len} {emb_dim}")
         
         embs = torch.zeros([batch_size, max_len, emb_dim], dtype=dtype, device=device)
         attn_mask = torch.zeros([batch_size, max_len], dtype=torch.int, device=device)
@@ -666,6 +663,7 @@ class MiniGPT4_llama_v2_Rppg(Blip2Base):
                 # stopping_criteria=stopping_criteria,
             )
 
+        # decoding
         answers = []
         for output_token in outputs:
             if output_token[0] == 0:
@@ -765,7 +763,7 @@ class MiniGPT4_llama_v2_Rppg(Blip2Base):
             for i in range(all_losses.shape[0]):
                 all_losses[i, num_cand[i]:] = 9999
         output_class_ranks = torch.argsort(all_losses, dim=-1)
-        logger.info(f"OUTPUT CLASS RANKS - {output_class_ranks} {output_class_ranks.shape}")
+        # logger.info(f"OUTPUT CLASS RANKS - {output_class_ranks} {output_class_ranks.shape}")
         return output_class_ranks.tolist()
 
     def predict_answers(
