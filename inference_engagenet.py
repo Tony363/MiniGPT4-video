@@ -23,7 +23,26 @@ def get_arguments():
         --label-path /home/tony/engagenet_labels/validation_engagement_labels.json\
         --consistency-qa /home/tony/MiniGPT4-video/gpt_evaluation/consistency_qa_engagenet.json\
         --rppg-dir /home/tony/engagenet_val/rppg_mamba/tensors
-        
+    
+    python3 inference_engagenet.py\
+        --videos-dir /home/tony/engagenet_val/videos\
+        --cfg-path test_configs/mistral_base_test_config.yaml\
+        --ckpt /home/tony/MiniGPT4-video/checkpoints/video_mistral_checkpoint_best.pth\
+        --num-classes 4\
+        --gpu-id 0\
+        --label-path /home/tony/engagenet_labels/validation_engagement_labels.json\
+        --consistency-qa /home/tony/MiniGPT4-video/gpt_evaluation/consistency_qa_engagenet.json
+    
+    python3 inference_engagenet.py\
+        --videos-dir /home/tony/engagenet_val/videos\
+        --cfg-path test_configs/mistral_rppg_test_config.yaml\
+        --ckpt /home/tony/MiniGPT4-video/checkpoints/video_mistral_checkpoint_best.pth\
+        --num-classes 4\
+        --gpu-id 0\
+        --label-path /home/tony/engagenet_labels/validation_engagement_labels.json\
+        --consistency-qa /home/tony/MiniGPT4-video/gpt_evaluation/consistency_qa_engagenet.json\
+        --rppg-dir /home/tony/engagenet_val/rppg_former/tensors
+    
     python3 inference_engagenet.py\
         --videos-dir /home/tony/engagenet_val/videos\
         --cfg-path test_configs/llama2_test_config.yaml\
@@ -43,25 +62,27 @@ def get_arguments():
     parser.add_argument("--max_new_tokens", type=int, default=512, help="max number of generated tokens")
     parser.add_argument("--lora_r", type=int, default=64, help="lora rank of the model")
     parser.add_argument("--lora_alpha", type=int, default=16, help="lora alpha")
-    parser.add_argument("--rppg-dir", type=str,required=False, help="location of rppg directory",default=None)
+    parser.add_argument("--rppg-dir", type=str,required=False, help="location of rppg directory",default="")
     parser.add_argument("--question",
                         type=str, 
                         default="Choose whether the student is 'not engaged','barely engaged', 'engaged', or 'highly engaged'.",
                         help="question to ask"
     )
+    
     parser.add_argument(
        "--sys_instruct",
         type=str, 
-        default="""
-<s>[INST]
-You are an intelligent chatbot that looks at a series of images and chooses between 'not engaged', 'barely engaged', 'engaged', or 'highly engaged'.
-The only choices are from following responses:
-    {'answer':0} for not-engaged
-    {'answer':1} for barely-engaged
-    {'answer':2} for engaged
-    {'answer':3} for highly-engaged
-[/INST]</s>
-""",
+        default="<s>[INST] This is a video of a student performing tasks in an online setting. Choose whether the student is 'Not Engaged','Barely Engaged', 'Engaged', or 'Highly Engaged'.[/INST]</s>",
+#         default="""
+# <s>[INST]
+# You are an intelligent chatbot that looks at a series of images and chooses between 'not engaged', 'barely engaged', 'engaged', or 'highly engaged'.
+# The only choices are from following responses:
+#     {'answer':0} for not-engaged
+#     {'answer':1} for barely-engaged
+#     {'answer':2} for engaged
+#     {'answer':3} for highly-engaged
+# [/INST]</s>
+# """,
         help="system prompt" 
     )
     parser.add_argument(
@@ -94,16 +115,16 @@ def get_test_labels(
 )->dict:
     label = {}
     classes = np.array([
-        ['Not-Engaged'],
-        ['Barely-engaged'],
-        ['Engaged'],
-        ['Highly-Engaged']
+        ['The student is Not-Engaged.'],
+        ['The student is Barely-engaged.'],
+        ['The student is Engaged.'],
+        ['The student is Highly-Engaged.']
     ])
     mapping = {
-        'Not-Engaged':0,
-        'Barely-engaged':1,
-        'Engaged':2,
-        'Highly-Engaged':3
+        'The student is Not-Engaged.':0,
+        'The student is Barely-engaged.':1,
+        'The student is Engaged.':2,
+        'The student is Highly-Engaged.':3
     }
     with open(label_path,'r') as f:
         captions = json.load(f)
@@ -164,8 +185,7 @@ def main()->None:
     metrics.to(config['model']['device'])
     
     pred_samples = []
-    samples = len(video_paths)
-    logger.info(f"RPPG INFERENCE - {args.rppg_dir is not None}")
+    logger.info(f"RPPG INFERENCE - {bool(args.rppg_dir)}")
     rppg = None
     for sample,vid_path in enumerate(video_paths):
         if not ".mp4" in vid_path:
@@ -175,13 +195,23 @@ def main()->None:
         vid_path = os.path.join(args.videos_dir, vid_path)
         logger.info("Processing video - {}".format(vid_id))
         
-        rppg_path = os.path.join(args.rppg_dir, f"{vid_id}_0.pt")
-        if args.rppg_dir is not None and os.path.exists(rppg_path):
-            rppg = torch.load(rppg_path)
-            samples['rppg'] = rppg.to(config['model']['device']) 
-        
-        
         prepared_images,q_prepared_instruction,q_prompt = prepare_conversation(vid_path,vis_processor,CONV_VISION,args.sys_instruct,args.question)
+
+        samples = {
+            "image":prepared_images.unsqueeze(0),
+            "instruction_input":[q_prepared_instruction],
+            "choices":classes,
+            "num_choices":[num_classes],
+            "length":[45],
+        }
+        rppg_path = os.path.join(args.rppg_dir, f"{vid_id}_0.pt")
+        logger.info(f"{os.path.exists(rppg_path)} {rppg_path}")
+        if args.rppg_dir and os.path.exists(rppg_path):
+            rppg = torch.load(rppg_path)
+            samples['rppg'] = rppg
+        pred_ans = model.predict_class(samples)
+        logger.info(f"{sample}: {pred_ans[0]} - {label[vid_id]}")
+        
         a1 = model.generate(
             prepared_images, 
             q_prompt, 
@@ -213,15 +243,6 @@ def main()->None:
             num_beams=1,
             rppg=rppg
         )    
-        samples = {
-            "image":prepared_images.unsqueeze(0),
-            "instruction_input":[q_prepared_instruction],
-            "choices":classes,
-            "num_choices":[num_classes],
-            "length":[45],
-        }
-        pred_ans = model.predict_class(samples)
-        logger.info(f"{sample}: {pred_ans[0]} - {label[vid_id]}")
         
         pred,target = torch.tensor([mapping[pred_ans[0]]]).to(config['model']['device']),torch.tensor([mapping[label[vid_id]]]).to(config['model']['device'])
         performance = metrics.forward(pred,target)
