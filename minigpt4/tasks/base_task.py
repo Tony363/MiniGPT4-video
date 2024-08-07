@@ -14,6 +14,7 @@ from minigpt4.common.dist_utils import get_rank, get_world_size, is_main_process
 from minigpt4.common.logger import MetricLogger, SmoothedValue
 from minigpt4.common.registry import registry
 from minigpt4.datasets.data_utils import prepare_sample
+from minigpt4.conversation.conversation import CONV_VISION
 
 import wandb
 import openai
@@ -92,12 +93,11 @@ class BaseTask:
         return loss
 
     def valid_step(self, model, samples):
-        rppg = samples['rppg'].float() if not (samples['rppg'] == 0).all() else None
         answers = model.generate(
             images=samples['image'],
             texts=samples['instruction_input'],
             lengths=samples['length'],
-            rppg=rppg,
+            rppg=samples['rppg'],
         )
         return answers
 
@@ -176,10 +176,17 @@ class BaseTask:
         # TODO make it configurable
         logger.info_freq = 10
         results = []
+
         for samples in metric_logger.log_every(data_loader, logger.info_freq, header):
-            
             samples = prepare_sample(samples, cuda_enabled=cuda_enabled)
-            # logger.info(f"EVAL SAMPLES - {samples.keys()} {type(samples)}")
+            
+            conv = CONV_VISION.copy()
+            conv.system = ""
+            conv.append_message(conv.roles[0],samples['instruction_input'][0])
+            conv.append_message(conv.roles[1],None)
+            samples['instruction_input'] = [conv.get_prompt()]
+            samples['rppg'] = samples['rppg'].float() if not (samples['rppg'] == 0).all() else None
+            
             eval_output = self.valid_step(model=model, samples=samples)
             for i,pred in enumerate(eval_output):
                 res={}
@@ -188,6 +195,7 @@ class BaseTask:
                 res['A'] = samples['answer'][i]
                 res['pred'] = pred
                 results.append(res)
+            # break
         if is_dist_avail_and_initialized():
             dist.barrier()
 
