@@ -391,6 +391,29 @@ class RunnerBase:
         self.result_dir = result_dir
         self.output_dir = output_dir
 
+    @staticmethod
+    def plot(
+        split:str,
+        output_dir:str
+    )->None:
+        import glob
+        import matplotlib.pyplot as plt
+        import numpy as np
+        
+        acc = np.array([
+            json.load(file_path)[split]['agg_metrics'] 
+            for file_path in glob.glob(f"{output_dir}/acc*.json")
+        ]).astype(np.float32)
+        
+        loss = np.array([
+            json.load(file_path)['train_loss'] 
+            for file_path in glob.glob(f"{output_dir}/loss*.json")
+        ]).astype(np.float32)
+
+        plt.plot(np.arange(acc.shape[0]), acc, label='accuracy')
+        plt.plot(np.arange(loss.shape[0]), loss, label='loss')
+        plt.savefig(f"{output_dir}/plot.png")
+    
     def train(self):
         start_time = time.time()
         best_agg_metric = 0
@@ -402,56 +425,32 @@ class RunnerBase:
         if not self.evaluate_only and self.resume_ckpt_path is not None:
             self._load_checkpoint(self.resume_ckpt_path)
 
-        for cur_epoch in range(self.start_epoch, self.max_epoch):
-            if cur_epoch % 10 == 0 or cur_epoch == self.max_epoch - 1:
-                # testing phase
-                logger.info("Evaluating on train set and val set")
-                test_epoch = "best" if len(self.valid_splits) > 0 else cur_epoch
-                test_logs = self.evaluate(cur_epoch=test_epoch, skip_reload=self.evaluate_only)
-                with open(os.path.join(self.output_dir, f"epoch_{cur_epoch}.json"), "w") as f:
-                    f.write(json.dumps(test_logs))
-                    
+        for cur_epoch in range(self.start_epoch, self.max_epoch):            
+
             # training phase
             if not self.evaluate_only:
                 logging.info("Start training")
                 train_stats = self.train_epoch(cur_epoch)
                 self.log_stats(split_name="train", stats=train_stats)
 
-
+            # validation phase
+            if len(self.valid_splits) > 0:
+                logger.info("Validation start")
+                val_log = {}
+                for split_name in self.valid_splits:
+                    val_log[split_name] = self.eval_epoch(
+                        split_name=split_name,cur_epoch=cur_epoch
+                    )
+                agg_metrics = val_log[self.valid_splits[-1]]["agg_metrics"]
+                self._save_checkpoint(cur_epoch, is_best=agg_metrics > best_agg_metric)
+                if agg_metrics > best_agg_metric:
+                    best_epoch, best_agg_metric = cur_epoch, agg_metrics
+                    val_log.update({"best_epoch": best_epoch})
                     
-            # evaluation phase
-            # if len(self.valid_splits) > 0 and self.config.run_cfg.video_instruction_eval:
-            #     self._save_checkpoint(cur_epoch, is_best=False)
-            #     for split_name in self.valid_splits:
-            #         logging.info("Evaluating on {}.".format(split_name))
-            #         ## Add validation 
-            #         val_log=self.custom_eval_epoch(cur_epoch)
-            #         # val_log = self.eval_epoch(
-            #         #     split_name=split_name,cur_epoch=cur_epoch
-            #         # )
-            #         logger.info("val log",val_log)
-            #         if val_log is not None:
-            #             if is_main_process():
-            #                 assert (
-            #                     "agg_metrics" in val_log
-            #                 ), "No agg_metrics found in validation log."
-
-            #                 agg_metrics = val_log["agg_metrics"]
-            #                 if agg_metrics > best_agg_metric and split_name == "val":
-            #                     best_epoch, best_agg_metric = cur_epoch, agg_metrics
-
-            #                     self._save_checkpoint(cur_epoch, is_best=True)
-
-            #                 val_log.update({"best_epoch": best_epoch})
-            #                 self.log_stats(val_log, split_name)
-            #                 wandb.log({"epoch": cur_epoch, "GPT4_Accuracy": val_log['agg_metrics']})
-            #                 logger.info("Validation finished")
-
-            # else:
-            # if no validation split is provided, we just save the checkpoint at the end of each epoch.
-            if not self.evaluate_only:
-                self._save_checkpoint(cur_epoch, is_best=False)
-
+                self.log_stats(val_log, split_name=self.valid_splits[-1])
+                wandb.log({"epoch": cur_epoch, "GPT4_Accuracy": val_log[self.valid_splits[-1]]['agg_metrics']})
+                logger.info("Validation finished") 
+  
             if self.evaluate_only:
                 break
 
@@ -508,7 +507,7 @@ class RunnerBase:
                 During testing, we will use provided weights and skip reloading the best checkpoint .
         """
         data_loader = self.dataloaders.get(split_name, None)
-        logger.info(f"EVAL DATALOADER -{split_name} {data_loader}")
+        # logger.info(f"EVAL DATALOADER - {split_name} {data_loader}")
         assert data_loader, "data_loader for split {} is None.".format(split_name)
 
         # TODO In validation, you need to compute loss as well as metrics

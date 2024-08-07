@@ -45,6 +45,15 @@ def get_arguments():
     
     python3 inference_engagenet.py\
         --videos-dir /home/tony/engagenet_val/videos\
+        --cfg-path test_configs/mistral_finetune_test_config.yaml\
+        --ckpt /home/tony/MiniGPT4-video/minigpt4/training_output/engagenet/mistral/202408010919/checkpoint_49.pth\
+        --num-classes 4\
+        --gpu-id 1\
+        --label-path /home/tony/engagenet_labels/validation_engagement_labels.json\
+        --consistency-qa /home/tony/MiniGPT4-video/gpt_evaluation/consistency_qa_engagenet.json
+    
+    python3 inference_engagenet.py\
+        --videos-dir /home/tony/engagenet_val/videos\
         --cfg-path test_configs/llama2_test_config.yaml\
         --ckpt /home/tony/MiniGPT4-video/checkpoints/video_llama_checkpoint_best.pth\
         --num-classes 4\
@@ -297,12 +306,26 @@ if __name__ == "__main__":
     Average score for contextual understanding: 3.4313725490196076
     Average score temporal understanding: 2.955182072829132
     
-    mistral-rppg
+    mistral-rppg-finetune no rppg
     Average score for correctness: 3.5676937441643326                                                                                   
     Average score for detailed orientation: 3.281045751633987                                                                            
     Average score for contextual understanding: 3.8823529411764706                                                                       
     Average score temporal understanding: 3.4248366013071894
     Average score for consistency: 2.7413632119514473
+    
+    mistral-rppg  with LoRA 4 bits
+    Average score for correctness: 2.764705882352941   
+    Average score for detailed orientation: 2.319327731092437   
+    Average score for contextual understanding: 2.8683473389355743   
+    Average score temporal understanding: 2.819794584500467    
+    Average score for consistency: 1.6704014939309058         
+    
+    mistral-finetune with LoRA 4 bits
+    Average score for correctness: 2.549019607843137                                                                                                                                                                                                                                
+    Average score for detailed orientation: 2.1260504201680672      
+    Average score for contextual understanding: 2.637721755368814
+    Average score temporal understanding: 2.604108309990663         
+    Average score for consistency: 0.8141923436041083               
     '''
     program = os.path.basename(__file__)
     if os.path.exists(f"logs/{os.path.splitext(program)[0]}.log"):

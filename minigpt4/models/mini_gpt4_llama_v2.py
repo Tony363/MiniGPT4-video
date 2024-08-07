@@ -56,11 +56,11 @@ class MiniGPT4_llama_v2_Rppg(Blip2Base):
         max_txt_len=32,
         low_resource=False,  # use 8 bit and put vit in cpu
         end_sym='\n',
-        lora_r = 64,
-        # lora_target_modules = ["q_proj","v_proj"],
+        lora_r = 8,
+        lora_target_modules = ["q_proj","v_proj"],
         lora_alpha=16,
         # lora_r = 16,
-        lora_target_modules = ["q_proj","v_proj","k_proj"],
+        # lora_target_modules = ["q_proj","v_proj","k_proj"],
         lora_dropout= 0.05,
         ckpt_path = "",
         system_prompt= False,
@@ -70,7 +70,7 @@ class MiniGPT4_llama_v2_Rppg(Blip2Base):
         max_context_len=3800,
         remove_template = False,
         rppg_encoder_weights=None,
-        device: torch.device = torch.device("cuda:0"),
+        device: torch.device = torch.device("cuda"),
     ):
         super().__init__()
         if "Mistral" in llama_model:
@@ -109,8 +109,7 @@ class MiniGPT4_llama_v2_Rppg(Blip2Base):
                 param = param.to(self._device)
             self.ln_vision = self.ln_vision.eval()
             self.ln_vision.train = disabled_train
-            logging.info("freeze vision encoder")
-            logger.info("freeze the vision encoder")
+            logger.info("freeze vision encoder")
 
         else:
             vit_precision="fp32"
@@ -155,9 +154,10 @@ class MiniGPT4_llama_v2_Rppg(Blip2Base):
             self.llama_model = llm_model.from_pretrained(
                 llama_model,
                 torch_dtype=torch.float16,
-                low_cpu_mem_usage=True
+                low_cpu_mem_usage=True,
+                device_map={'':self._device}
             )
-            
+        self.llama_model = self.llama_model.to(self._device)
             
             
         # self.llama_model.resize_token_embeddings(len(self.llama_tokenizer))
@@ -192,7 +192,7 @@ class MiniGPT4_llama_v2_Rppg(Blip2Base):
             )
             
         self.rppg_proj = AE()
-        self.rppg_proj.load_state_dict(torch.load(rppg_encoder_weights))
+        self.rppg_proj.load_state_dict(torch.load(rppg_encoder_weights,map_location=self._device))
         for name,param in self.rppg_proj.named_parameters():
             param.requires_grad = False
             param = param.to(self._device)
@@ -218,11 +218,11 @@ class MiniGPT4_llama_v2_Rppg(Blip2Base):
         
         
     def encode_img(self, image):
-        device = image.device
+        image = image.to(self._device)
         if len(image.shape) > 4: 
             image = image.reshape(-1, *image.shape[-3:]) # for video input flatten the batch and time dimension (4,50,3,224,224) -> (200,3,224,224)
         with self.maybe_autocast():
-            image_embeds = self.ln_vision(self.visual_encoder(image)).to(device) # (200,3,224,224) -> (200,257,1408)
+            image_embeds = self.ln_vision(self.visual_encoder(image)) # (200,3,224,224) -> (200,257,1408)
             image_embeds = image_embeds[:,1:,:] # remove the first token (CLS) (200,256,1408)
             bs, pn, hs = image_embeds.shape
             if self.token_pooling: # concat the each 4 tokens into one token (200,64,5632)
@@ -448,6 +448,7 @@ class MiniGPT4_llama_v2_Rppg(Blip2Base):
             """
             rppg = samples['rppg']
             rppg = self.rppg_proj.encode(rppg)[0].unsqueeze(0)
+            logger.info(f"ENCODED RPPG - {rppg.shape}")
             # rppg = torch.ones(1,1,5,4096,dtype=torch.int8).to("cuda:0")
 
             
@@ -641,7 +642,7 @@ class MiniGPT4_llama_v2_Rppg(Blip2Base):
             attn_mask = attn_mask[:, -context_window:]
             
         llama_model = self.llama_model
-            
+        # logger.info(f"GENERATE EMBS - {embs.shape}")
         with self.maybe_autocast():
             if return_video_temporal_features:
                 last_hidden_state = llama_model(
@@ -873,7 +874,7 @@ class MiniGPT4_llama_v2_Rppg(Blip2Base):
         max_context_len = cfg.get("max_context_len", 3800)
         remove_template = cfg.get("remove_template", False)
         rppg_encoder_weights = cfg.get("rppg_encoder_weights",  "minigpt4/autoencoder/model_weights_RhytmFormer.pth")
-        device = cfg.get("device", "cuda:0")
+        device = cfg.get("device", "cuda")
 
         model = cls(
             vit_model=vit_model,

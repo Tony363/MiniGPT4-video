@@ -3,13 +3,12 @@ import torch.nn as nn
 import torch.optim as optim
 import matplotlib.pyplot as plt
 
-
 class AE(torch.nn.Module):
     def __init__(self):
         super(AE, self).__init__()
 
         self.encoder = torch.nn.Sequential(
-            torch.nn.Linear(160, 128),
+            torch.nn.Linear(296, 128),
             torch.nn.BatchNorm1d(128),
             torch.nn.ReLU(),
             torch.nn.Linear(128, 64),
@@ -52,12 +51,18 @@ class AE(torch.nn.Module):
             torch.nn.Linear(1024, 512),
             torch.nn.BatchNorm1d(512),
             torch.nn.ReLU(),
-            torch.nn.Linear(512, 256),
-            torch.nn.BatchNorm1d(256),
-            torch.nn.ReLU(),
-            torch.nn.Linear(256, 160),
+            torch.nn.Linear(512, 296),
             torch.nn.Sigmoid()
         )
+
+    def forward(self, x):
+        x = x.view(x.size(0), -1)
+        encoded = self.encoder(x)
+        middle_output = self.middle_model(encoded)
+        decoded = self.decoder(middle_output)
+        decoded = decoded.view(x.size(0), 296)
+        return middle_output, decoded
+
 
     def encode(self,x:torch.tensor)->torch.tensor:
         middle_output, decoded = self.forward(x)
@@ -67,14 +72,6 @@ class AE(torch.nn.Module):
             middle_output.shape[1]//5
         )
     
-    def forward(self, x):
-        x = x.view(x.size(0), -1)
-        encoded = self.encoder(x)
-        middle_output = self.middle_model(encoded)
-        decoded = self.decoder(middle_output)
-        decoded = decoded.view(x.size(0), 160, 1)
-        return middle_output, decoded
-
 
 
 # def collect_tensors(tensor_dict):
