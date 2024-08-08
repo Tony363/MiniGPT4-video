@@ -88,6 +88,7 @@ def main():
     job_id = now()
     args = parse_args()
     cfg = Config(args)
+    # os.environ["CUDA_VISIBLE_DEVICES"] = str(cfg.run_cfg.gpu)
     init_distributed_mode(cfg.run_cfg)
     setup_seeds(cfg)
 
@@ -102,7 +103,6 @@ def main():
     datasets = task.build_datasets(cfg)
     model = task.build_model(cfg)
     if not hasattr(cfg.run_cfg, 'rank') or cfg.run_cfg.rank == 0:
-        print("project name", args.job_name)
 
         wandb.init(project="minigpt4-spatial",name=args.job_name)
 
@@ -126,6 +126,7 @@ def main():
 
 if __name__ == "__main__":
     import os
-    # os.environ["WANDB_MODE"] = "dryrun"
+    wandb.init()
+    os.environ["WANDB_MODE"] = "dryrun"
     # torch.multiprocessing.set_start_method('spawn', force=True)
     main()

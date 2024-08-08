@@ -877,6 +877,7 @@ class VideoChatGPTBuilder(BaseDatasetBuilder):
 @registry.register_builder("engagenet")
 class EngageNetBuilder(BaseDatasetBuilder):
     train_dataset_cls = EngageNetDataset # Add the dataset class here
+    val_dataset_cls = EngageNetDataset
 
     DATASET_CONFIG_DICT = {
         "default": "configs/datasets/engagenet/default.yaml",
@@ -901,7 +902,14 @@ class EngageNetBuilder(BaseDatasetBuilder):
             subtitles_path=build_info.subtitles_path, # Add subtitles path here
             model_name=build_info.model_name # Add model name here (llama2 or mistral)
         )
-
+        datasets['eval'] = self.val_dataset_cls(
+            vis_processor=self.vis_processors["eval"], # Add the vis_processor here
+            text_processor=self.text_processors["eval"], # Add the text_processor here
+            vis_root=build_info.vis_root_val, # Add videos path here
+            ann_paths=build_info.ann_paths_val, # Add annotations path here
+            subtitles_path=build_info.subtitles_path, # Add subtitles path here
+            model_name=build_info.model_name, # Add model name here (llama2 or mistral)
+        )
         return datasets
     
     

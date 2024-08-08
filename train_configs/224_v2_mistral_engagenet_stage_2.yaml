@@ -4,14 +4,14 @@ model:
   freeze_vit: True
   freeze_qformer: True
   max_txt_len: 512 # 512
-  low_resource: True
+  low_resource: False
   image_size: 224
   end_sym: "</s>"
   llama_model: "mistralai/Mistral-7B-Instruct-v0.2"
   ckpt: "checkpoints/video_mistral_checkpoint_best.pth" # set the checkpoint to start the training from
   use_grad_checkpoint: True
   chat_template: True
-  lora_r: 64
+  lora_r: 8
   lora_alpha: 16
   length: 50
   use_grad_checkpoint_llm: True
@@ -26,8 +26,13 @@ datasets:
       train:
         name: "blip2_image_train"
         image_size: 224
+      eval:
+        name: "blip2_image_train"
+        image_size: 224
     text_processor:
       train:
+        name: "blip_caption"
+      eval:
         name: "blip_caption"
     sample_ratio: 200
 
@@ -36,7 +41,7 @@ run:
   task: image_text_pretrain
   # optimizer
   lr_sched: "linear_warmup_cosine_lr"
-  init_lr: 1e-4
+  init_lr: 1e-5
   min_lr: 8e-5
   warmup_lr: 1e-6
 
@@ -54,8 +59,11 @@ run:
 
   evaluate: False
   train_splits: ["train"]
+  valid_splits: ["eval"]
+  test_splits: ["eval"]
 
   device: "cuda"
+  gpu: 1
   world_size: 1
   dist_url: "env://"
-  distributed: True
+  distributed: False
