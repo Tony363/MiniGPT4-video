@@ -14,3 +14,5 @@ datasets:
       vis_root: /home/tony/engagenet_train/
       subtitles_path: /home/tony/
       model_name: 'mistral' # Language Model Name (available: llama2, mistral)
+      vis_root_val: /home/tony/engagenet_val/
+      ann_paths_val: [/home/tony/engagenet_labels/validation_engagement_labels.json]

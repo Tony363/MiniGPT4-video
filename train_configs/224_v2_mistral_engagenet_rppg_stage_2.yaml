@@ -47,7 +47,7 @@ run:
 
   weight_decay: 0.05
   max_epoch: 50
-  num_workers: 0
+  num_workers: 16
   warmup_steps: 875
   iters_per_epoch: 875
 
@@ -64,6 +64,7 @@ run:
   test_splits: ["eval"]
 
   device: "cuda"
+  # gpu: 1 
   world_size: 1
   dist_url: "env://"
   distributed: True

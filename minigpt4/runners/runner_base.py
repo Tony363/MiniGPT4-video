@@ -111,7 +111,7 @@ class RunnerBase:
                     #
             else:
                 self._wrapped_model = self._model
-
+        logger.info(f"DDP MODEL DEVICE - {self._wrapped_model.device_ids}")
         return self._wrapped_model
 
     @property
@@ -418,7 +418,7 @@ class RunnerBase:
         start_time = time.time()
         best_agg_metric = 0
         best_epoch = 0
-
+        train_loss = 99
         self.log_config()
 
         # resume from checkpoint if specified
@@ -426,12 +426,6 @@ class RunnerBase:
             self._load_checkpoint(self.resume_ckpt_path)
 
         for cur_epoch in range(self.start_epoch, self.max_epoch):            
-
-            # training phase
-            if not self.evaluate_only:
-                logging.info("Start training")
-                train_stats = self.train_epoch(cur_epoch)
-                self.log_stats(split_name="train", stats=train_stats)
 
             # validation phase
             if len(self.valid_splits) > 0:
@@ -450,6 +444,12 @@ class RunnerBase:
                 self.log_stats(val_log, split_name=self.valid_splits[-1])
                 wandb.log({"epoch": cur_epoch, "GPT4_Accuracy": val_log[self.valid_splits[-1]]['agg_metrics']})
                 logger.info("Validation finished") 
+                
+            # training phase
+            if not self.evaluate_only:
+                logging.info("Start training")
+                train_stats = self.train_epoch(cur_epoch)
+                self.log_stats(split_name="train", stats=train_stats)
   
             if self.evaluate_only:
                 break

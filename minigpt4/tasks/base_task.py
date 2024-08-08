@@ -176,7 +176,7 @@ class BaseTask:
         # TODO make it configurable
         logger.info_freq = 10
         results = []
-
+        logger.info(f"EVAL # SAMPLES - {len(data_loader)}")
         for samples in metric_logger.log_every(data_loader, logger.info_freq, header):
             samples = prepare_sample(samples, cuda_enabled=cuda_enabled)
             
@@ -346,7 +346,7 @@ class BaseTask:
                     wandb.log({"epoch": inner_epoch, "loss": loss})
             metric_logger.update(loss=loss.item())
             metric_logger.update(lr=optimizer.param_groups[0]["lr"])
-
+            # break
         # after train_epoch()
         # gather the stats from all processes
         metric_logger.synchronize_between_processes()

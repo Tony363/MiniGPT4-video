@@ -1117,6 +1117,7 @@ class EngageNetRppgDataset(BaseDataset, __DisplMixin):
         vis_root (string): Root directory of images (e.g. coco/images/)
         ann_root (string): directory to store the annotation file
         """
+        logger.info(f"RPPG DIR - {rppg_dir} SAMPLES - {len(os.listdir(rppg_dir))}")
         super().__init__(vis_processor, text_processor, vis_root, ann_paths)
         self.model_name=model_name
         if self.model_name =='mistral':
@@ -1213,8 +1214,9 @@ class EngageNetRppgDataset(BaseDataset, __DisplMixin):
         # Return the images, instruction, answer, video_id, and the length of the video
         
         rppg = 0
-        if os.path.exists(os.path.join(self.rppg_dir,f"{video_id}.pt")):
-            rppg = torch.load(os.path.join(self.rppg_dir,f"{video_id}.pt")).flatten().float()
+        # logger.info(f'RPPG PATH - {os.path.join(self.rppg_dir,f"{video_id}_0.pt")} {os.path.exists(os.path.join(self.rppg_dir,f"{video_id}_0.pt"))}')
+        if os.path.exists(os.path.join(self.rppg_dir,f"{video_id}_0.pt")):
+            rppg = torch.load(os.path.join(self.rppg_dir,f"{video_id}_0.pt")).flatten().float()
         # logger.info(f"LOADING VIDID - {video_id}")
         output = {
             "image": images,

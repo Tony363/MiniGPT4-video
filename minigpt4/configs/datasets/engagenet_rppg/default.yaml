@@ -14,8 +14,8 @@ datasets:
       vis_root: /home/tony/engagenet_train/
       subtitles_path: /home/tony/
       model_name: 'mistral' # Language Model Name (available: llama2, mistral)    rppg_path: "/home/tony/engagenet_train/rppg_mamba"
-      rppg_dir: "/home/tony/engagenet_train/rppg_former/tensors"
-
+      rppg_dir: "/home/tony/nvme2tb/rhythmformer_rppg/train/train-tensors"
+      
       vis_root_val: /home/tony/engagenet_val/
-      rppg_dir_val: "/home/tony/engagenet_val/rppg_former/tensors"
+      rppg_dir_val: "/home/tony/nvme2tb/rhythmformer_rppg/validation/validation-tensors"
       ann_paths_val: [/home/tony/engagenet_labels/validation_engagement_labels.json]
