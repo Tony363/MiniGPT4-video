@@ -4,18 +4,18 @@ model:
   freeze_vit: True
   freeze_qformer: True
   max_txt_len: 512 # 512
-  low_resource: False
+  low_resource: True
   image_size: 224
   end_sym: "</s>"
   llama_model: "mistralai/Mistral-7B-Instruct-v0.2"
   ckpt: "checkpoints/video_mistral_checkpoint_best.pth" # set the checkpoint to start the training from
   use_grad_checkpoint: True
   chat_template: True
-  lora_r: 8
+  lora_r: 64
   lora_alpha: 16
   length: 50
   use_grad_checkpoint_llm: True
-  max_context_len: 3600 # 7200
+  max_context_len: 4500 # 7200
   rppg_encoder_weights: "minigpt4/autoencoder/model_weights_RhytmFormer296.pth"
   # device: "cuda:1"
 
@@ -65,6 +65,6 @@ run:
 
   device: "cuda"
   # gpu: 1 
-  world_size: 1
+  world_size: 2
   dist_url: "env://"
   distributed: True

@@ -102,12 +102,12 @@ class MiniGPT4_llama_v2_Rppg(Blip2Base):
             )
             for name, param in self.visual_encoder.named_parameters():
                 param.requires_grad = False
-                # param = param.to(self._device)
+                # param = param.to(self.device)
             self.visual_encoder = self.visual_encoder.eval()
             self.visual_encoder.train = disabled_train
             for name, param in self.ln_vision.named_parameters():
                 param.requires_grad = False
-                # param = param.to(self._device)
+                # param = param.to(self.device)
             self.ln_vision = self.ln_vision.eval()
             self.ln_vision.train = disabled_train
             logger.info("freeze vision encoder")
@@ -192,7 +192,7 @@ class MiniGPT4_llama_v2_Rppg(Blip2Base):
             )
             
         self.rppg_proj = AE()
-        self.rppg_proj.load_state_dict(torch.load(rppg_encoder_weights))#map_location=self._device))
+        self.rppg_proj.load_state_dict(torch.load(rppg_encoder_weights,map_location=self.device))
         for name,param in self.rppg_proj.named_parameters():
             param.requires_grad = False
             # param = param.to(self._device)
@@ -218,7 +218,7 @@ class MiniGPT4_llama_v2_Rppg(Blip2Base):
         
         
     def encode_img(self, image):
-        # image = image.to(self._device)s
+        image = image.to(self.ln_vision.weight.device)
         device = image.device
         if len(image.shape) > 4: 
             image = image.reshape(-1, *image.shape[-3:]) # for video input flatten the batch and time dimension (4,50,3,224,224) -> (200,3,224,224)
@@ -603,7 +603,7 @@ class MiniGPT4_llama_v2_Rppg(Blip2Base):
             """
             encode batches number of rppgs
             """
-            rppg = rppg.flatten().unsqueeze(0).to(self.device)
+            rppg = rppg.flatten().unsqueeze(0).to(device=self.device,dtype=self.rppg_proj.encoder[0].weight.dtype)
             rppgs = [self.rppg_proj.encode(rppg)]
             # rppgs = [torch.ones(1,5,4096,dtype=torch.int8).to(self._device)]    
         

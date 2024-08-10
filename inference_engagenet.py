@@ -9,6 +9,10 @@ from torchmetrics.classification import MulticlassAccuracy, MulticlassPrecision,
 from minigpt4.common.eval_utils import prepare_texts, init_model
 from minigpt4_video_inference import run,setup_seeds,prepare_input
 from minigpt4.conversation.conversation import CONV_VISION
+from minigpt4.common.config import Config
+from minigpt4.common.registry import registry
+import minigpt4.tasks as tasks
+
 from utils import init_logger
 
 
@@ -36,13 +40,12 @@ def get_arguments():
     python3 inference_engagenet.py\
         --videos-dir /home/tony/engagenet_val/videos\
         --cfg-path test_configs/mistral_rppg_test_config.yaml\
-        --ckpt /home/tony/MiniGPT4-video/checkpoints/video_mistral_checkpoint_best.pth\
+        --ckpt /home/tony/MiniGPT4-video/minigpt4/training_output/engagenet/mistral_rppg_former/202408091439/checkpoint_3.pth\
         --num-classes 4\
-        --gpu-id 0\
         --label-path /home/tony/engagenet_labels/validation_engagement_labels.json\
         --consistency-qa /home/tony/MiniGPT4-video/gpt_evaluation/consistency_qa_engagenet.json\
-        --rppg-dir /home/tony/engagenet_val/rppg_former/tensors
-    
+        --rppg-dir /home/tony/nvme2tb/rhythmformer_rppg/validation/validation-tensors
+        
     python3 inference_engagenet.py\
         --videos-dir /home/tony/engagenet_val/videos\
         --cfg-path test_configs/mistral_finetune_test_config.yaml\
@@ -74,14 +77,14 @@ def get_arguments():
     parser.add_argument("--rppg-dir", type=str,required=False, help="location of rppg directory",default="")
     parser.add_argument("--question",
                         type=str, 
-                        default="Choose whether the student is 'not engaged','barely engaged', 'engaged', or 'highly engaged'.",
+                        default="Choose whether the student is 'Not Engaged','Barely Engaged', 'Engaged', or 'Highly Engaged'",
                         help="question to ask"
     )
     
     parser.add_argument(
        "--sys_instruct",
         type=str, 
-        default="<s>[INST] This is a video of a student performing tasks in an online setting. Choose whether the student is 'Not Engaged','Barely Engaged', 'Engaged', or 'Highly Engaged'.[/INST]</s>",
+        default="<s> [INST] This is a video of a student performing tasks in an online setting.[/INST]</s>",
 #         default="""
 # <s>[INST]
 # You are an intelligent chatbot that looks at a series of images and chooses between 'not engaged', 'barely engaged', 'engaged', or 'highly engaged'.
@@ -186,15 +189,27 @@ def main()->None:
     )
     num_classes,max_new_tokens = args.num_classes,args.max_new_tokens
     model, vis_processor = init_model(args)
-    model.to(config['model']['device'])
+    model = model.to(config['run']['device'])
+    # cfg = Config(args)
+    # cfg.model_cfg.ckpt = args.ckpt
+    # cfg.model_cfg.lora_r = args.lora_r
+    # cfg.model_cfg.lora_alpha = args.lora_alpha
+    # cfg.pretty_print()
+    # task = tasks.setup_task(cfg)
+    # model = task.build_model(cfg)
+    # # model.to(cfg.run_cfg.device)
+    # model.eval()
+    
+    # key = list(cfg.datasets_cfg.keys())[0]
+    # vis_processor_cfg = cfg.datasets_cfg.get(key).vis_processor.train
+    # vis_processor = registry.get_processor_class(vis_processor_cfg.name).from_config(vis_processor_cfg)
     
     video_paths = os.listdir(args.videos_dir)
     
     metrics = load_metrics(args.num_classes)
-    metrics.to(config['model']['device'])
+    metrics.to(config['run']['device'])
     
     pred_samples = []
-    logger.info(f"RPPG INFERENCE - {bool(args.rppg_dir)}")
     rppg = None
     for sample,vid_path in enumerate(video_paths):
         if not ".mp4" in vid_path:
@@ -207,20 +222,24 @@ def main()->None:
         prepared_images,q_prepared_instruction,q_prompt = prepare_conversation(vid_path,vis_processor,CONV_VISION,args.sys_instruct,args.question)
 
         samples = {
-            "image":prepared_images.unsqueeze(0),
+            "image":prepared_images.unsqueeze(0).to(config['run']['device']),
             "instruction_input":[q_prepared_instruction],
             "choices":classes,
             "num_choices":[num_classes],
-            "length":[45],
+            "length":[len(prepared_images)],
         }
         rppg_path = os.path.join(args.rppg_dir, f"{vid_id}_0.pt")
         logger.info(f"{os.path.exists(rppg_path)} {rppg_path}")
         if args.rppg_dir and os.path.exists(rppg_path):
-            rppg = torch.load(rppg_path)
+            rppg = torch.load(rppg_path).to(config['run']['device'])
             samples['rppg'] = rppg
+            logger.info(f"RPPG INFERENCE - {rppg is not None}")
+
+            
         pred_ans = model.predict_class(samples)
         logger.info(f"{sample}: {pred_ans[0]} - {label[vid_id]}")
         
+        prepared_images = prepared_images.to(config['run']['device'])
         a1 = model.generate(
             prepared_images, 
             q_prompt, 
@@ -253,7 +272,7 @@ def main()->None:
             rppg=rppg
         )    
         
-        pred,target = torch.tensor([mapping[pred_ans[0]]]).to(config['model']['device']),torch.tensor([mapping[label[vid_id]]]).to(config['model']['device'])
+        pred,target = torch.tensor([mapping[pred_ans[0]]]).to(config['run']['device']),torch.tensor([mapping[label[vid_id]]]).to(config['run']['device'])
         performance = metrics.forward(pred,target)
         logger.info(f"ACC - {performance['MulticlassAccuracy']}")
         logger.info(f"PR - {performance['MulticlassPrecision']}")

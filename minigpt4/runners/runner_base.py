@@ -16,6 +16,7 @@ import torch
 import torch.distributed as dist
 import webdataset as wds
 import wandb
+from peft.peft_model import PeftModelForCausalLM
 from minigpt4.common.dist_utils import (
     download_cached_file,
     get_rank,
@@ -381,15 +382,19 @@ class RunnerBase:
         output_dir = lib_root / self.config.run_cfg.output_dir / self.job_id
         # output_dir = lib_root / self.config.run_cfg.output_dir
         result_dir = output_dir / "result"
-
+        adapter_output_dir = output_dir / "adapter_output"
+        
         output_dir.mkdir(parents=True, exist_ok=True)
         result_dir.mkdir(parents=True, exist_ok=True)
-
+        adapter_output_dir.mkdir(parents=True, exist_ok=True)
+        
         registry.register_path("result_dir", str(result_dir))
         registry.register_path("output_dir", str(output_dir))
-
+        registry.register_path("adapter_output_dir", str(adapter_output_dir))
+        
         self.result_dir = result_dir
         self.output_dir = output_dir
+        self.adapter_output_dir = adapter_output_dir
 
     @staticmethod
     def plot(
@@ -418,7 +423,6 @@ class RunnerBase:
         start_time = time.time()
         best_agg_metric = 0
         best_epoch = 0
-        train_loss = 99
         self.log_config()
 
         # resume from checkpoint if specified
@@ -426,32 +430,37 @@ class RunnerBase:
             self._load_checkpoint(self.resume_ckpt_path)
 
         for cur_epoch in range(self.start_epoch, self.max_epoch):            
-
             # validation phase
-            if len(self.valid_splits) > 0:
-                logger.info("Validation start")
-                val_log = {}
-                for split_name in self.valid_splits:
-                    val_log[split_name] = self.eval_epoch(
-                        split_name=split_name,cur_epoch=cur_epoch
-                    )
-                agg_metrics = val_log[self.valid_splits[-1]]["agg_metrics"]
-                self._save_checkpoint(cur_epoch, is_best=agg_metrics > best_agg_metric)
-                if agg_metrics > best_agg_metric:
-                    best_epoch, best_agg_metric = cur_epoch, agg_metrics
-                    val_log.update({"best_epoch": best_epoch})
+            # if len(self.valid_splits) > 0:
+            #     logger.info("Validation start")
+            #     val_log = {}
+            #     for split_name in self.valid_splits:
+            #         val_log[split_name] = self.eval_epoch(
+            #             split_name=split_name,cur_epoch=cur_epoch
+            #         )
+            #     agg_metrics = val_log[self.valid_splits[-1]]["agg_metrics"]
+            #     self._save_checkpoint(cur_epoch, is_best=agg_metrics > best_agg_metric)
+            #     early_stopping += 1
+            #     if agg_metrics > best_agg_metric:
+            #         early_stopping -= 1
+            #         best_epoch, best_agg_metric = cur_epoch, agg_metrics
+            #         val_log.update({"best_epoch": best_epoch})
                     
-                self.log_stats(val_log, split_name=self.valid_splits[-1])
-                wandb.log({"epoch": cur_epoch, "GPT4_Accuracy": val_log[self.valid_splits[-1]]['agg_metrics']})
-                logger.info("Validation finished") 
+            #     self.log_stats(val_log, split_name=self.valid_splits[-1])
+            #     wandb.log({"epoch": cur_epoch, "GPT4_Accuracy": val_log[self.valid_splits[-1]]['agg_metrics']})
+            #     logger.info("Validation finished") 
                 
             # training phase
             if not self.evaluate_only:
                 logging.info("Start training")
                 train_stats = self.train_epoch(cur_epoch)
+                logger.info(train_stats)
                 self.log_stats(split_name="train", stats=train_stats)
-  
-            if self.evaluate_only:
+                
+            if not self.evaluate_only:
+                self._save_checkpoint(cur_epoch, is_best=False)
+             
+            if self.evaluate_only or float(train_stats['loss']) < 0.1:
                 break
 
             if self.config.run_cfg.distributed:
@@ -670,6 +679,10 @@ class RunnerBase:
         param_grad_dic = {
             k: v.requires_grad for (k, v) in model_no_ddp.named_parameters()
         }
+        if isinstance(model_no_ddp.llama_model, PeftModelForCausalLM):
+            logger.info("Saving adapter model")
+            model_no_ddp.llama_model.save_pretrained(self.adapter_output_dir)
+            
         state_dict = model_no_ddp.state_dict()
         for k in list(state_dict.keys()):
             if k in param_grad_dic.keys() and not param_grad_dic[k]:

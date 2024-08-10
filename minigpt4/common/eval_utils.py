@@ -65,7 +65,6 @@ def init_model(args,device:str=None)->tuple:
     cfg.model_cfg.lora_alpha = args.lora_alpha
 
     model_config = cfg.model_cfg
-    model_config.low_resource = True
     model_cls = registry.get_model_class(model_config.arch)
     model = model_cls.from_config(model_config)
 
