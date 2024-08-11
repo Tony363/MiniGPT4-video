@@ -150,7 +150,7 @@ def get_test_labels(
 
 def load_metrics(num_classes:int)->torchmetrics.MetricCollection:
     metrics = torchmetrics.MetricCollection([
-        MulticlassAccuracy(num_classes=num_classes, average="macro"),
+        MulticlassAccuracy(num_classes=num_classes, average="micro"),
         MulticlassPrecision(num_classes=num_classes, average="macro"),
         MulticlassRecall(num_classes=num_classes, average="macro"),
         MulticlassF1Score(num_classes=num_classes, average="macro"),
@@ -191,19 +191,7 @@ def main()->None:
     num_classes,max_new_tokens = args.num_classes,args.max_new_tokens
     model, vis_processor = init_model(args)
     model = model.to(config['run']['device'])
-    # cfg = Config(args)
-    # cfg.model_cfg.ckpt = args.ckpt
-    # cfg.model_cfg.lora_r = args.lora_r
-    # cfg.model_cfg.lora_alpha = args.lora_alpha
-    # cfg.pretty_print()
-    # task = tasks.setup_task(cfg)
-    # model = task.build_model(cfg)
-    # # model.to(cfg.run_cfg.device)
-    # model.eval()
-    
-    # key = list(cfg.datasets_cfg.keys())[0]
-    # vis_processor_cfg = cfg.datasets_cfg.get(key).vis_processor.train
-    # vis_processor = registry.get_processor_class(vis_processor_cfg.name).from_config(vis_processor_cfg)
+    model.eval()
     
     video_paths = os.listdir(args.videos_dir)
     
@@ -230,7 +218,7 @@ def main()->None:
             "length":[len(prepared_images)],
         }
         rppg_path = os.path.join(args.rppg_dir, f"{vid_id}_0.pt")
-        logger.info(f"{os.path.exists(rppg_path)} {rppg_path}")
+        logger.info(f"EXISTS - {os.path.exists(rppg_path)} {rppg_path}")
         if args.rppg_dir and os.path.exists(rppg_path):
             rppg = torch.load(rppg_path).to(config['run']['device'])
             samples['rppg'] = rppg
@@ -241,7 +229,7 @@ def main()->None:
         logger.info(f"{sample}: {pred_ans[0]} - {label[vid_id]}")
         
         prepared_images = prepared_images.to(config['run']['device'])
-        a1 = model.generate(
+        a = model.generate(
             prepared_images, 
             q_prompt, 
             max_new_tokens=max_new_tokens, 
@@ -283,10 +271,10 @@ def main()->None:
         pred_set:dict={
             'video_name':vid_id,
             'Q':args.question,
-            'Q1': q1,
+            'Q1':q1,
             'Q2':q2,
             'A':label[vid_id],
-            'pred':pred_ans[0],
+            'pred':a,
             'pred1':a1,
             'pred2':a2
         }
