@@ -4,6 +4,7 @@ import argparse
 import json
 import ast
 from multiprocessing.pool import Pool
+from dotenv import load_dotenv,find_dotenv
 
 
 def parse_args():
@@ -17,7 +18,7 @@ def parse_args():
     return args
 
 
-def annotate(prediction_set, caption_files, output_dir):
+def annotate(client,prediction_set, caption_files, output_dir):
     """
     Evaluates question and answer pairs using GPT-3 and
     returns a score for consistency.
@@ -32,7 +33,7 @@ def annotate(prediction_set, caption_files, output_dir):
         pred2 = qa_set['pred2']
         try:
             # Compute the consistency score
-            completion = openai.ChatCompletion.create(
+            completion = client.chat.completions.create(
                 model="gpt-4o-mini",
                 messages=[
                     {
@@ -65,7 +66,8 @@ def annotate(prediction_set, caption_files, output_dir):
                 ]
             )
             # Convert response to a Python dictionary.
-            response_message = completion["choices"][0]["message"]["content"]
+            # response_message = completion["choices"][0]["message"]["content"]
+            response_message = completion.choices[0].message.content
             response_dict = ast.literal_eval(response_message)
             result_qa_pair = [response_dict, qa_set]
 
@@ -128,7 +130,9 @@ def main():
     # Set the OpenAI API key.
     openai.api_key = args.api_key
     num_tasks = args.num_tasks
-
+    env_path = find_dotenv('/home/tony/MiniGPT4-video/.env')
+    load_dotenv(env_path)
+    client = openai.OpenAI(api_key=os.getenv("API_KEY"))
     # While loop to ensure that all captions are processed.
     while True:
         try:
@@ -149,7 +153,7 @@ def main():
             # Split tasks into parts.
             part_len = len(incomplete_files) // num_tasks
             all_parts = [incomplete_files[i:i + part_len] for i in range(0, len(incomplete_files), part_len)]
-            task_args = [(prediction_set, part, args.output_dir) for part in all_parts]
+            task_args = [(client,prediction_set, part, args.output_dir) for part in all_parts]
 
             # Use a pool of workers to process the files in parallel.
             with Pool() as pool:
