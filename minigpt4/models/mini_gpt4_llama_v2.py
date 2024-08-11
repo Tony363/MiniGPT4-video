@@ -1029,13 +1029,13 @@ class MiniGPT4_llama_v2(Blip2Base):
         if self.low_resource:
             self.llama_model = llm_model.from_pretrained(
                 llama_model,               
-                device_map={'':self._device}, #torch.cuda.current_device()
+                device_map={'':torch.cuda.current_device()}, #torch.cuda.current_device()
                 low_cpu_mem_usage=True,
                 quantization_config=BitsAndBytesConfig(
-                    load_in_4bit=True,
+                    load_in_8bit=True,
                     bnb_4bit_compute_dtype=torch.bfloat16,
                     bnb_4bit_use_double_quant=True,
-                    bnb_4bit_quant_type='nf4'
+                    bnb_4bit_quant_type='nf8'
                 ),
             )
         else:
@@ -1043,7 +1043,7 @@ class MiniGPT4_llama_v2(Blip2Base):
                 llama_model,
                 torch_dtype=torch.float16,
                 low_cpu_mem_usage=True,
-                device_map=self._device,
+                device_map={'':torch.cuda.current_device()}, #torch.cuda.current_device()
             )
             
             self.llama_model = self.llama_model.to(self._device)

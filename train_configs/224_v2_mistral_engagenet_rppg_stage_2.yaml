@@ -64,7 +64,7 @@ run:
   test_splits: ["eval"]
 
   device: "cuda"
-  # gpu: 1 
+  gpu: 0 # set DDP entry device
   world_size: 2
   dist_url: "env://"
   distributed: True

@@ -22,10 +22,7 @@ import ast
 from dotenv import load_dotenv,find_dotenv
 import os
 
-# Load the .env file
-env_path = find_dotenv('/home/tony/MiniGPT4-video/.env')
-load_dotenv(env_path)
-openai.api_key = os.getenv("API_KEY")
+
 
 from utils import init_logger
 import os
@@ -93,21 +90,28 @@ class BaseTask:
         return loss
 
     def valid_step(self, model, samples):
+        if 'rppg' in samples and not (samples['rppg'] == 0):
+            answers = model.generate(
+                images=samples['image'],
+                texts=samples['instruction_input'],
+                lengths=samples['length'],
+                rppg=samples['rppg'],
+            )
+            return answers
         answers = model.generate(
             images=samples['image'],
             texts=samples['instruction_input'],
             lengths=samples['length'],
-            rppg=samples['rppg'],
         )
         return answers
 
     def before_evaluation(self, model, dataset, **kwargs):
         model.before_evaluation(dataset=dataset, task_type=type(self))
         
-    def chatgpt_eval(self,question, answer,pred):
+    def chatgpt_eval(self,client,question, answer,pred):
         try:
             # Compute the correctness score
-            completion = openai.ChatCompletion.create(
+            completion = client.chat.completions.create(
                 model="gpt-4o-mini",
                 # model='gpt-4',
                 messages=[
@@ -137,7 +141,8 @@ class BaseTask:
                 ]
             )
             # Convert response to a Python dictionary.
-            response_message = completion["choices"][0]["message"]["content"]
+            # response_message = completion["choices"][0]["message"]["content"]
+            response_message = completion.choices[0].message.content
             response_dict = ast.literal_eval(response_message)
             return response_dict
         except Exception as e:
@@ -148,8 +153,12 @@ class BaseTask:
         scores=[]
         yes_count=0
         no_count=0
+        # Load the .env file
+        env_path = find_dotenv('/home/tony/MiniGPT4-video/.env')
+        load_dotenv(env_path)
+        client = openai.OpenAI(api_key=os.getenv("API_KEY"))
         for res in val_result:
-            gpt_response=self.chatgpt_eval(res['Q'],res['A'],res['pred'])
+            gpt_response=self.chatgpt_eval(client,res['Q'],res['A'],res['pred'])
             if gpt_response is None:
                 continue
             try:
@@ -158,8 +167,8 @@ class BaseTask:
                     yes_count+=1
                 elif 'no' in gpt_response['pred'].lower():
                     no_count+=1
-            except:
-                continue
+            except Exception as e:
+                logger.info(f"GPT EVALUATION ERROR: {e}")
         avg_score=sum(scores)/len(scores)
         accuracy=(yes_count/(yes_count+no_count))*100
         logger.info(f"Epoch {epoch} chatgpt score: {avg_score} accuracy: {accuracy}")
@@ -185,7 +194,7 @@ class BaseTask:
             conv.append_message(conv.roles[0],samples['instruction_input'][0])
             conv.append_message(conv.roles[1],None)
             samples['instruction_input'] = [conv.get_prompt()]
-            samples['rppg'] = samples['rppg'].float() if not (samples['rppg'] == 0).all() else None
+            samples['rppg'] = samples['rppg'].float() if 'rppg' in samples and not (samples['rppg'] == 0).all() else 0
             
             eval_output = self.valid_step(model=model, samples=samples)
             for i,pred in enumerate(eval_output):
@@ -298,10 +307,12 @@ class BaseTask:
             # In iter-based runner, we schedule the learning rate based on iterations.
             inner_epoch = start_iters // iters_per_epoch
             header = header + "; inner epoch [{}]".format(inner_epoch)
-
+            
+        loss = 999
         for i in metric_logger.log_every(range(iters_per_epoch), log_freq, header):
+            
             # if using iter-based runner, we stop after iters_per_epoch iterations.
-            if i >= iters_per_epoch:
+            if i >= iters_per_epoch or loss < 0.05:
                 break
             samples = next(data_loader)
             samples = prepare_sample(samples, cuda_enabled=cuda_enabled)
@@ -344,6 +355,7 @@ class BaseTask:
                 optimizer.zero_grad()
                 if self.cfg.run_cfg.rank==0:
                     wandb.log({"epoch": inner_epoch, "loss": loss})
+                    
             metric_logger.update(loss=loss.item())
             metric_logger.update(lr=optimizer.param_groups[0]["lr"])
             # break

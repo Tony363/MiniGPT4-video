@@ -13,6 +13,7 @@ from minigpt4.common.config import Config
 from minigpt4.common.registry import registry
 import minigpt4.tasks as tasks
 
+from tqdm import tqdm
 from utils import init_logger
 
 
@@ -211,7 +212,7 @@ def main()->None:
     
     pred_samples = []
     rppg = None
-    for sample,vid_path in enumerate(video_paths):
+    for sample,vid_path in enumerate(tqdm(video_paths)):
         if not ".mp4" in vid_path:
             continue
         

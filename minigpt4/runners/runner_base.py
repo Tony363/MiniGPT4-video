@@ -16,6 +16,7 @@ import torch
 import torch.distributed as dist
 import webdataset as wds
 import wandb
+import peft
 from peft.peft_model import PeftModelForCausalLM
 from minigpt4.common.dist_utils import (
     download_cached_file,
@@ -460,15 +461,14 @@ class RunnerBase:
             if not self.evaluate_only:
                 self._save_checkpoint(cur_epoch, is_best=False)
              
-            if self.evaluate_only or float(train_stats['loss']) < 0.1:
+            if self.evaluate_only:
                 break
 
             if self.config.run_cfg.distributed:
                 dist.barrier()
 
         # testing phase
-        test_epoch = "best" if len(self.valid_splits) > 0 else cur_epoch
-        test_logs = self.evaluate(cur_epoch=test_epoch, skip_reload=self.evaluate_only)
+        test_logs = self.evaluate(cur_epoch=cur_epoch, skip_reload=self.evaluate_only)
         with open(os.path.join(self.output_dir, f"epoch_{cur_epoch + 1}.json"), "w") as f:
             f.write(json.dumps(test_logs))
 
@@ -679,7 +679,8 @@ class RunnerBase:
         param_grad_dic = {
             k: v.requires_grad for (k, v) in model_no_ddp.named_parameters()
         }
-        if isinstance(model_no_ddp.llama_model, PeftModelForCausalLM):
+        logger.info(f"SAVING CHECKPOINT - {cur_epoch} - {is_best}")
+        if isinstance(model_no_ddp.llama_model, peft.peft_model.PeftModelForCausalLM):
             logger.info("Saving adapter model")
             model_no_ddp.llama_model.save_pretrained(self.adapter_output_dir)
             
