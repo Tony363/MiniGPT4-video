@@ -1,14 +1,14 @@
 model:
-  arch: mini_gpt4_llama_v2_rppg
+  arch: mini_gpt4_llama_v2
   model_type: pretrain_vicuna
   freeze_vit: True
   freeze_qformer: True
   max_txt_len: 512
-  low_resource: True
+  low_resource: False
   image_size: 224
   end_sym: "</s>"
   llama_model: "mistralai/Mistral-7B-Instruct-v0.2"
-  ckpt: /home/tony/MiniGPT4-video/minigpt4/training_output/engagenet/mistral/202408010919/checkpoint_49.pth
+  ckpt: /home/tony/MiniGPT4-video/minigpt4/training_output/engagenet/mistral/202408102213/checkpoint_49.pth
   # ckpt: "/home/tony/MiniGPT4-video/checkpoints/video_mistral_checkpoint_best.pth"
   # ckpt: "/home/tony/nvme2tb/mistral_rppg_mamba_half/202407300139/checkpoint_49.pth" 
   #"checkpoints/video_mistral_all_checkpoint_last.pth"
@@ -18,8 +18,9 @@ model:
   lora_alpha: 16
   length: 50
   use_grad_checkpoint_llm: True
-  max_context_len: 3600 #7200
-  device: "cuda:1"
+  max_context_len: 4500 #7200
+  # rppg_encoder_weights: "minigpt4/autoencoder/model_weights_RhytmFormer296.pth"
+  # device: "cuda:1"
 
 datasets:
   engagenet_rppg: #99378 row  - 13224 video
@@ -37,5 +38,6 @@ datasets:
 run:
   task: image_text_pretrain
   seed: 42
+  gpu: 1
   amp: True
-  device: "cuda:1"
+  device: "cuda"

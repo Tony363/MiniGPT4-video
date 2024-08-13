@@ -19,15 +19,15 @@ from utils import init_logger
 
 def get_arguments():
     """
+    
     python3 inference_engagenet.py\
         --videos-dir /home/tony/engagenet_val/videos\
         --cfg-path test_configs/mistral_test_config.yaml\
-        --ckpt /home/tony/nvme2tb/mistral_rppg_mamba_half/202407300139/checkpoint_49.pth\
+        --ckpt /home/tony/MiniGPT4-video/minigpt4/training_output/engagenet/mistral/202408102213/checkpoint_49.pth\
         --num-classes 4\
         --gpu-id 1\
         --label-path /home/tony/engagenet_labels/validation_engagement_labels.json\
         --consistency-qa /home/tony/MiniGPT4-video/gpt_evaluation/consistency_qa_engagenet.json\
-        --rppg-dir /home/tony/engagenet_val/rppg_mamba/tensors
     
     python3 inference_engagenet.py\
         --videos-dir /home/tony/engagenet_val/videos\
@@ -50,7 +50,7 @@ def get_arguments():
     python3 inference_engagenet.py\
         --videos-dir /home/tony/engagenet_val/videos\
         --cfg-path test_configs/mistral_finetune_test_config.yaml\
-        --ckpt /home/tony/MiniGPT4-video/minigpt4/training_output/engagenet/mistral/202408010919/checkpoint_49.pth\
+        --ckpt /home/tony/MiniGPT4-video/checkpoints/video_mistral_checkpoint_best.pth\
         --num-classes 4\
         --gpu-id 1\
         --label-path /home/tony/engagenet_labels/validation_engagement_labels.json\
@@ -223,43 +223,73 @@ def main()->None:
             rppg = torch.load(rppg_path).to(config['run']['device'])
             samples['rppg'] = rppg
             logger.info(f"RPPG INFERENCE - {rppg is not None}")
-
             
+            a = model.generate(
+                prepared_images, 
+                q_prompt, 
+                max_new_tokens=max_new_tokens, 
+                do_sample=True, 
+                lengths=[len(prepared_images)],
+                num_beams=1,
+                rppg=rppg
+            ) 
+            
+            q1,q2 = qa_pairs[vid_id]['Q1'],qa_pairs[vid_id]['Q2']
+            _,q1_prepared_instruction,q1_prompt = prepare_conversation(vid_path,vis_processor,CONV_VISION,args.sys_instruct,q1)
+            a1 = model.generate(
+                prepared_images, 
+                q1_prompt, 
+                max_new_tokens=max_new_tokens, 
+                do_sample=True, 
+                lengths=[len(prepared_images)],
+                num_beams=1,
+                rppg=rppg
+            ) 
+            _,q2_prepared_instruction,q2_prompt = prepare_conversation(vid_path,vis_processor,CONV_VISION,args.sys_instruct,q2)
+            a2 = model.generate(
+                prepared_images, 
+                q2_prompt, 
+                max_new_tokens=max_new_tokens, 
+                do_sample=True, 
+                lengths=[len(prepared_images)],
+                num_beams=1,
+                rppg=rppg
+            )
+        else:
+            logger.info(f"RPPG INFERENCE - {rppg is not None}")
+            a = model.generate(
+                prepared_images, 
+                q_prompt, 
+                max_new_tokens=max_new_tokens, 
+                do_sample=True, 
+                lengths=[len(prepared_images)],
+                num_beams=1,
+            ) 
+            
+            q1,q2 = qa_pairs[vid_id]['Q1'],qa_pairs[vid_id]['Q2']
+            _,q1_prepared_instruction,q1_prompt = prepare_conversation(vid_path,vis_processor,CONV_VISION,args.sys_instruct,q1)
+            a1 = model.generate(
+                prepared_images, 
+                q1_prompt, 
+                max_new_tokens=max_new_tokens, 
+                do_sample=True, 
+                lengths=[len(prepared_images)],
+                num_beams=1,
+            ) 
+            _,q2_prepared_instruction,q2_prompt = prepare_conversation(vid_path,vis_processor,CONV_VISION,args.sys_instruct,q2)
+            a2 = model.generate(
+                prepared_images, 
+                q2_prompt, 
+                max_new_tokens=max_new_tokens, 
+                do_sample=True, 
+                lengths=[len(prepared_images)],
+                num_beams=1,
+            )    
         pred_ans = model.predict_class(samples)
         logger.info(f"{sample}: {pred_ans[0]} - {label[vid_id]}")
         
         prepared_images = prepared_images.to(config['run']['device'])
-        a = model.generate(
-            prepared_images, 
-            q_prompt, 
-            max_new_tokens=max_new_tokens, 
-            do_sample=True, 
-            lengths=[len(prepared_images)],
-            num_beams=1,
-            rppg=rppg
-        ) 
-        
-        q1,q2 = qa_pairs[vid_id]['Q1'],qa_pairs[vid_id]['Q2']
-        prepared_images,q1_prepared_instruction,q1_prompt = prepare_conversation(vid_path,vis_processor,CONV_VISION,args.sys_instruct,q1)
-        a1 = model.generate(
-            prepared_images, 
-            q1_prompt, 
-            max_new_tokens=max_new_tokens, 
-            do_sample=True, 
-            lengths=[len(prepared_images)],
-            num_beams=1,
-            rppg=rppg
-        ) 
-        prepared_images,q2_prepared_instruction,q2_prompt = prepare_conversation(vid_path,vis_processor,CONV_VISION,args.sys_instruct,q2)
-        a2 = model.generate(
-            prepared_images, 
-            q2_prompt, 
-            max_new_tokens=max_new_tokens, 
-            do_sample=True, 
-            lengths=[len(prepared_images)],
-            num_beams=1,
-            rppg=rppg
-        )    
+
         
         pred,target = torch.tensor([mapping[pred_ans[0]]]).to(config['run']['device']),torch.tensor([mapping[label[vid_id]]]).to(config['run']['device'])
         performance = metrics.forward(pred,target)

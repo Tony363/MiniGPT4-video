@@ -973,6 +973,7 @@ class MiniGPT4_llama_v2(Blip2Base):
         self.remove_template = remove_template
 
         self._device = device
+        logger.info(f"LOADING TO {self._device}")
         logger.info(f"token pooling {self.token_pooling}")
 
 
@@ -1043,10 +1044,10 @@ class MiniGPT4_llama_v2(Blip2Base):
                 llama_model,
                 torch_dtype=torch.float16,
                 low_cpu_mem_usage=True,
-                device_map={'':torch.cuda.current_device()}, #torch.cuda.current_device()
+                device_map={'':self._device}, #torch.cuda.current_device()
             )
             
-            self.llama_model = self.llama_model.to(self._device)
+        self.llama_model = self.llama_model.to(self._device)
             
         # self.llama_model.resize_token_embeddings(len(self.llama_tokenizer))
         # self.llama_model = prepare_model_for_int8_training(self.llama_model)

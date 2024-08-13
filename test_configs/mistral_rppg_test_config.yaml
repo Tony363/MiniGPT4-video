@@ -39,4 +39,5 @@ run:
   task: image_text_pretrain
   seed: 42
   amp: True
+  gpu: 1
   device: "cuda"
