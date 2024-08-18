@@ -1152,8 +1152,9 @@ class MiniGPT4_llama_v2_Rppg(Blip2Base):
                     rppg_tag = self.llama_tokenizer("<rppg>", return_tensors="pt", add_special_tokens=False)#.to(self._device)
                     rppg_tag_embed = self.embed_tokens(rppg_tag.input_ids)
                     mixed_embs.append(rppg_tag_embed)
-                    mixed_embs.append(rppg)
-                    # mixed_embs.append(rppg[:, idx//rppg_interval,:].unsqueeze(0))
+                    # mixed_embs.append(rppg)
+                    logger.info(f"INDEXING RPPG {idx % rppg.shape[1]}")
+                    mixed_embs.append(rppg[:, idx % rppg.shape[1],:].unsqueeze(0))
                     
             mixed_embs += [seg_embs[-1]]
         else:
@@ -1205,12 +1206,13 @@ class MiniGPT4_llama_v2_Rppg(Blip2Base):
                         """
                         rppg_tag = self.llama_tokenizer("<rppg>", return_tensors="pt", add_special_tokens=False).to(img_embeds.device)
                         rppg_embed = self.embed_tokens(rppg_tag.input_ids)
+                        logger.info(f"INDEXING RPPG {idx % rppg.shape[1]}")
                         m_emb = torch.cat([
                             p_embed, 
                             each_img_embed[None][:, idx*pn:(idx+1)*pn],
                             rppg_embed,
-                            # rppg[:,idx//rppg_interval,:].unsqueeze(0)
-                            rppg
+                            rppg[:,idx % rppg.shape[1],:].unsqueeze(0)
+                            # rppg
                         ], dim=1)
                         interleave_emb.append(m_emb)
                     else:
