@@ -7,7 +7,6 @@
 
 import datetime
 import json
-import logging
 import os
 import time
 from pathlib import Path
@@ -108,7 +107,7 @@ class RunnerBase:
             if self.use_distributed:
                 if self._wrapped_model is None:
                     self._wrapped_model = DDP(
-                        self._model, device_ids=[self.config.run_cfg.gpu],find_unused_parameters=True # False
+                        self._model, device_ids=[self.config.run_cfg.gpu],find_unused_parameters=False # False
                     )
                     #
             else:
@@ -131,7 +130,7 @@ class RunnerBase:
                 else:
                     p_wd.append(p)
                 num_parameters += p.data.nelement()
-            logging.info("number of trainable parameters: %d" % num_parameters)
+            logger.info("number of trainable parameters: %d" % num_parameters)
             optim_params = [
                 {
                     "params": p_wd,
@@ -226,7 +225,7 @@ class RunnerBase:
             # training set becomes a tuple (ConcatDataset, ChainDataset), both are
             # optional but at least one of them is required. The resultant ConcatDataset
             # and ChainDataset will be sampled evenly.
-            logging.info(
+            logger.info(
                 "dataset_ratios not specified, datasets will be concatenated (map-style datasets) or chained (webdataset.DataPipeline)."
             )
 
@@ -259,12 +258,12 @@ class RunnerBase:
                     else:
                         # a single wds.DataPipeline
                         num_records = -1
-                        logging.info(
+                        logger.info(
                             "Only a single wds.DataPipeline dataset, no __len__ attribute."
                         )
 
                 if num_records >= 0:
-                    logging.info(
+                    logger.info(
                         "Loaded {} records for {} split from the dataset.".format(
                             num_records, split_name
                         )
@@ -337,7 +336,7 @@ class RunnerBase:
         valid_splits = self.config.run_cfg.get("valid_splits", [])
 
         if len(valid_splits) == 0:
-            logging.info("No validation splits found.")
+            logger.info("No validation splits found.")
 
         return valid_splits
 
@@ -352,7 +351,7 @@ class RunnerBase:
         train_splits = self.config.run_cfg.get("train_splits", [])
 
         if len(train_splits) == 0:
-            logging.info("Empty train splits.")
+            logger.info("Empty train splits.")
 
         return train_splits
 
@@ -430,7 +429,7 @@ class RunnerBase:
         if not self.evaluate_only and self.resume_ckpt_path is not None:
             self._load_checkpoint(self.resume_ckpt_path)
 
-        for cur_epoch in range(self.start_epoch, self.max_epoch):            
+        for cur_epoch in range(self.start_epoch, self.max_epoch):           
             # validation phase
             # if len(self.valid_splits) > 0:
             #     logger.info("Validation start")
@@ -453,7 +452,7 @@ class RunnerBase:
                 
             # training phase
             if not self.evaluate_only:
-                logging.info("Start training")
+                logger.info("Start training")
                 train_stats = self.train_epoch(cur_epoch)
                 logger.info(train_stats)
                 self.log_stats(split_name="train", stats=train_stats)
@@ -461,8 +460,8 @@ class RunnerBase:
             if not self.evaluate_only:
                 self._save_checkpoint(cur_epoch, is_best=False)
              
-            if self.evaluate_only:
-                break
+            if self.evaluate_only or float(train_stats["loss"]) < 0.06:
+                break 
 
             if self.config.run_cfg.distributed:
                 dist.barrier()
@@ -474,7 +473,7 @@ class RunnerBase:
 
         total_time = time.time() - start_time
         total_time_str = str(datetime.timedelta(seconds=int(total_time)))
-        logging.info("Training time {}".format(total_time_str))
+        logger.info("Training time {}".format(total_time_str))
 
     def evaluate(self, cur_epoch="best", skip_reload=False):
         test_logs = dict()
@@ -700,7 +699,7 @@ class RunnerBase:
             self.output_dir,
             "checkpoint_{}.pth".format("best" if is_best else cur_epoch),
         )
-        logging.info("Saving checkpoint at epoch {} to {}.".format(cur_epoch, save_to))
+        logger.info("Saving checkpoint at epoch {} to {}.".format(cur_epoch, save_to))
         torch.save(save_obj, save_to)
 
     def _reload_best_model(self, model):
@@ -709,12 +708,12 @@ class RunnerBase:
         """
         checkpoint_path = os.path.join(self.output_dir, "checkpoint_best.pth")
 
-        logging.info("Loading checkpoint from {}.".format(checkpoint_path))
+        logger.info("Loading checkpoint from {}.".format(checkpoint_path))
         checkpoint = torch.load(checkpoint_path, map_location="cpu")
         try:
             model.load_state_dict(checkpoint["model"])
         except RuntimeError as e:
-            logging.warning(
+            logger.warning(
                 """
                 Key mismatch when loading checkpoint. This is expected if only part of the model is saved.
                 Trying to load the model with strict=False.
@@ -746,7 +745,7 @@ class RunnerBase:
 
         self.start_epoch = checkpoint["epoch"] + 1
         logger.info("resume the checkpoint")
-        logging.info("Resume checkpoint from {}".format(url_or_filename))
+        logger.info("Resume checkpoint from {}".format(url_or_filename))
 
     @main_process
     def log_stats(self, stats, split_name):

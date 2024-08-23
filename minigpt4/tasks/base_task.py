@@ -5,7 +5,6 @@
  For full license text, see the LICENSE_Lavis file in the repo root or https://opensource.org/licenses/BSD-3-Clause
 """
 
-import logging
 import os
 
 import torch
@@ -294,7 +293,7 @@ class BaseTask:
         metric_logger.add_meter("loss", SmoothedValue(window_size=1, fmt="{value:.4f}"))
 
         # if iter-based runner, schedule lr based on inner epoch.
-        logging.info(
+        logger.info(
             "Start training epoch {}, {} iters per inner epoch.".format(
                 epoch, iters_per_epoch
             )
@@ -312,7 +311,7 @@ class BaseTask:
         for i in metric_logger.log_every(range(iters_per_epoch), log_freq, header):
             
             # if using iter-based runner, we stop after iters_per_epoch iterations.
-            if i >= iters_per_epoch or loss < 0.05:
+            if i >= iters_per_epoch:
                 break
             samples = next(data_loader)
             samples = prepare_sample(samples, cuda_enabled=cuda_enabled)
@@ -362,7 +361,7 @@ class BaseTask:
         # after train_epoch()
         # gather the stats from all processes
         metric_logger.synchronize_between_processes()
-        logging.info("Averaged stats: " + str(metric_logger.global_avg()))
+        logger.info("Averaged stats: " + str(metric_logger.global_avg()))
         return {
             k: "{:.3f}".format(meter.global_avg)
             for k, meter in metric_logger.meters.items()
@@ -383,7 +382,7 @@ class BaseTask:
             dist.barrier()
 
         if is_main_process():
-            logging.warning("rank %d starts merging results." % get_rank())
+            logger.warning("rank %d starts merging results." % get_rank())
             # combine results from all processes
             result = []
 

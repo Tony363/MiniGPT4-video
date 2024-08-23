@@ -1143,18 +1143,17 @@ class MiniGPT4_llama_v2_Rppg(Blip2Base):
             for idx,pair in enumerate(zip(seg_embs[:-1], img_list)):
                 for emb in pair:
                     mixed_embs.append(emb)
-                if idx % rppg_interval == 0:
-                    '''
-                    crux of the logic to append rppg tag and rppg upsampled tensor for generate function
-                    rppg is appended every rppg_interval
-                    if 45 images are there, rppg will be appended every 9th image
-                    '''
-                    rppg_tag = self.llama_tokenizer("<rppg>", return_tensors="pt", add_special_tokens=False)#.to(self._device)
-                    rppg_tag_embed = self.embed_tokens(rppg_tag.input_ids)
-                    mixed_embs.append(rppg_tag_embed)
-                    # mixed_embs.append(rppg)
-                    logger.info(f"INDEXING RPPG {idx % rppg.shape[1]}")
-                    mixed_embs.append(rppg[:, idx % rppg.shape[1],:].unsqueeze(0))
+                '''
+                crux of the logic to append rppg tag and rppg upsampled tensor for generate function
+                rppg is appended every rppg_interval
+                if 45 images are there, rppg will be appended every 9th image
+                '''
+                rppg_tag = self.llama_tokenizer("<rppg>", return_tensors="pt", add_special_tokens=False)#.to(self._device)
+                rppg_tag_embed = self.embed_tokens(rppg_tag.input_ids)
+                mixed_embs.append(rppg_tag_embed)
+                # mixed_embs.append(rppg)
+                logger.info(f"INDEXING RPPG {idx % rppg.shape[1]}")
+                mixed_embs.append(rppg[:, idx % rppg.shape[1],:].unsqueeze(0))
                     
             mixed_embs += [seg_embs[-1]]
         else:
@@ -1191,14 +1190,12 @@ class MiniGPT4_llama_v2_Rppg(Blip2Base):
                     each_img_embed = each_img_embed.reshape(-1, each_img_embed.shape[-1])
                     each_img_embed = each_img_embed[:lengths[idx] * pn]
                 p_segs = each_prompt.split('<ImageHere>')
-                if rppg is not None:
-                    rppg_interval = (len(p_segs) - 1)//rppg.shape[1]
     
                 interleave_emb = []
                 for idx, seg in enumerate(p_segs[:-1]):
                     p_tokens = self.llama_tokenizer(seg, return_tensors="pt", add_special_tokens=False).to(img_embeds.device)
                     p_embed = self.embed_tokens(p_tokens.input_ids)
-                    if rppg is not None and idx % rppg_interval == 0 :
+                    if rppg is not None:
                         """
                         crux of the logic for forward pass to append rppg tag and rppg upsampled tensor
                         rppg is appended every rppg_interval
@@ -1206,7 +1203,7 @@ class MiniGPT4_llama_v2_Rppg(Blip2Base):
                         """
                         rppg_tag = self.llama_tokenizer("<rppg>", return_tensors="pt", add_special_tokens=False).to(img_embeds.device)
                         rppg_embed = self.embed_tokens(rppg_tag.input_ids)
-                        logger.info(f"INDEXING RPPG {idx % rppg.shape[1]}")
+                        # logger.info(f"INDEXING RPPG {idx % rppg.shape[1]} {rppg[:,idx % rppg.shape[1],:].shape}")
                         m_emb = torch.cat([
                             p_embed, 
                             each_img_embed[None][:, idx*pn:(idx+1)*pn],

@@ -1,5 +1,5 @@
 model:
-  arch: mini_gpt4_llama_v2_rppg2
+  arch: mini_gpt4_llama_v2_rppg
   model_type: pretrain_vicuna
   freeze_vit: True
   freeze_qformer: True
@@ -15,8 +15,8 @@ model:
   lora_alpha: 16
   length: 50
   use_grad_checkpoint_llm: True
-  max_context_len: 3800 # 7200
-  rppg_encoder_weights: "minigpt4/autoencoder/model_weights_RhytmFormer296.pth"
+  max_context_len: 3600 # 7200
+  rppg_encoder_weights: "minigpt4/autoencoder/model_weights_RhytmFormer296_BEST.pth"
   # device: "cuda:1"
 
 datasets:

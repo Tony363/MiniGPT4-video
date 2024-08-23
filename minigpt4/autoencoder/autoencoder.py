@@ -10,66 +10,50 @@ class AE(torch.nn.Module):
         self.encoder = torch.nn.Sequential(
             torch.nn.Linear(296, 128),
             torch.nn.BatchNorm1d(128),
-            torch.nn.ReLU(),
-            torch.nn.Linear(128, 64),
-            torch.nn.BatchNorm1d(64),
-            torch.nn.ReLU(),
-            torch.nn.Linear(64, 32),
-            torch.nn.BatchNorm1d(32)
-        )
-
-        self.middle_model = torch.nn.Sequential(
-            torch.nn.Linear(32, 64),
-            torch.nn.BatchNorm1d(64),
-            torch.nn.ReLU(),
-            torch.nn.Linear(64, 128),
-            torch.nn.BatchNorm1d(128),
-            torch.nn.ReLU(),
+            torch.nn.Tanh(),
             torch.nn.Linear(128, 256),
             torch.nn.BatchNorm1d(256),
-            torch.nn.ReLU(),
+            torch.nn.Tanh(),
             torch.nn.Linear(256, 512),
             torch.nn.BatchNorm1d(512),
-            torch.nn.ReLU(),
+            torch.nn.Tanh(),
             torch.nn.Linear(512, 1024),
             torch.nn.BatchNorm1d(1024),
-            torch.nn.ReLU(),
+            torch.nn.Tanh(),
             torch.nn.Linear(1024, 2048),
             torch.nn.BatchNorm1d(2048),
-            torch.nn.ReLU(),
-            torch.nn.Linear(2048, 5*4096),
-            torch.nn.Sigmoid()
+            torch.nn.Tanh(),
+            torch.nn.Linear(2048, 5*4096)
         )
 
         self.decoder = torch.nn.Sequential(
             torch.nn.Linear(5*4096, 2048),
             torch.nn.BatchNorm1d(2048),
-            torch.nn.ReLU(),
+            torch.nn.Tanh(),
             torch.nn.Linear(2048, 1024),
             torch.nn.BatchNorm1d(1024),
-            torch.nn.ReLU(),
+            torch.nn.Tanh(),
             torch.nn.Linear(1024, 512),
             torch.nn.BatchNorm1d(512),
-            torch.nn.ReLU(),
-            torch.nn.Linear(512, 296),
-            torch.nn.Sigmoid()
+            torch.nn.Tanh(),
+            torch.nn.Linear(512, 296)
+            # torch.nn.Sigmoid()
         )
 
     def forward(self, x):
         x = x.view(x.size(0), -1)
         encoded = self.encoder(x)
-        middle_output = self.middle_model(encoded)
-        decoded = self.decoder(middle_output)
+        decoded = self.decoder(encoded)
         decoded = decoded.view(x.size(0), 296)
-        return middle_output, decoded
+        return encoded, decoded
 
 
     def encode(self,x:torch.tensor)->torch.tensor:
-        middle_output, decoded = self.forward(x)
-        return middle_output.reshape(
-            middle_output.shape[0],
+        encoded, decoded = self.forward(x)
+        return encoded.reshape(
+            encoded.shape[0],
             5,
-            middle_output.shape[1]//5
+            encoded.shape[1]//5
         )
     
 
