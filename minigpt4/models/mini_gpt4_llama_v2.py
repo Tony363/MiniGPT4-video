@@ -202,6 +202,7 @@ Parameter indices which did not receive grad for rank 0: 130 131
         self.rppg_proj = nn.Linear(
             296, self.llama_model.config.hidden_size
         )
+        ln_rppg = nn.LayerNorm(296)
         
         # self.rppg_proj = AE()
         # self.rppg_proj.load_state_dict(torch.load(rppg_encoder_weights,map_location=self.device))
@@ -536,7 +537,7 @@ Parameter indices which did not receive grad for rank 0: 130 131
             encodes rppg
             """
             # logger.info(f"INPUT RPPG - {samples['rppg'].shape}")
-            samples['rppg'] = self.rppg_proj(samples['rppg']).unsqueeze(0)
+            samples['rppg'] = self.ln_rppg(self.rppg_proj(samples['rppg']).unsqueeze(0))
             # logger.info(f"ENCODED RPPG - {samples['rppg'].shape}")
          
             
@@ -613,7 +614,7 @@ Parameter indices which did not receive grad for rank 0: 130 131
             encode batches number of rppgs
             """
             rppg = rppg.flatten().unsqueeze(0).to(device=self.device,dtype=self.rppg_proj.encoder[0].weight.dtype)
-            rppgs = [self.rppg_proj(rppg)]
+            rppgs = [self.ln_rppg(self.rppg_proj(rppg))]
             logger.info(f"ENCODED RPPG - {rppgs[0].shape}")
             # rppgs = [torch.ones(1,5,4096,dtype=torch.int8).to(self._device)]    
         
@@ -1138,7 +1139,6 @@ class MiniGPT4_llama_v2_Rppg(Blip2Base):
         seg_embs = [self.embed_tokens(seg_t) for seg_t in seg_tokens]
         
         if rppg is not None:
-            rppg_interval = len(img_list)//rppg.shape[1]
             mixed_embs = []
             for idx,pair in enumerate(zip(seg_embs[:-1], img_list)):
                 for emb in pair:
@@ -1152,7 +1152,7 @@ class MiniGPT4_llama_v2_Rppg(Blip2Base):
                 rppg_tag_embed = self.embed_tokens(rppg_tag.input_ids)
                 mixed_embs.append(rppg_tag_embed)
                 # mixed_embs.append(rppg)
-                logger.info(f"INDEXING RPPG {idx % rppg.shape[1]}")
+                # logger.info(f"INDEXING RPPG {idx % rppg.shape[1]}")
                 mixed_embs.append(rppg[:, idx % rppg.shape[1],:].unsqueeze(0))
                     
             mixed_embs += [seg_embs[-1]]

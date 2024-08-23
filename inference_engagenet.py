@@ -41,7 +41,7 @@ def get_arguments():
     python3 inference_engagenet.py\
         --videos-dir /home/tony/engagenet_val/videos\
         --cfg-path test_configs/mistral_rppg_test_config.yaml\
-        --ckpt /home/tony/MiniGPT4-video/minigpt4/training_output/engagenet/mistral_rppg_former/202408091439/checkpoint_3.pth\
+        --ckpt /home/tony/MiniGPT4-video/minigpt4/training_output/engagenet/mistral_rppg_former/202408220314/checkpoint_17.pth\
         --num-classes 4\
         --label-path /home/tony/engagenet_labels/validation_engagement_labels.json\
         --consistency-qa /home/tony/MiniGPT4-video/gpt_evaluation/consistency_qa_engagenet.json\
