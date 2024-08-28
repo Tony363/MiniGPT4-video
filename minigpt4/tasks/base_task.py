@@ -21,7 +21,7 @@ import ast
 from dotenv import load_dotenv,find_dotenv
 import os
 
-
+openai.api_key_path = '/home/tony/MiniGPT4-video/.env'
 
 from utils import init_logger
 import os
@@ -89,7 +89,7 @@ class BaseTask:
         return loss
 
     def valid_step(self, model, samples):
-        if 'rppg' in samples and not (samples['rppg'] == 0):
+        if 'rppg' in samples and not (samples['rppg'] == 0).all():
             answers = model.generate(
                 images=samples['image'],
                 texts=samples['instruction_input'],
@@ -107,11 +107,11 @@ class BaseTask:
     def before_evaluation(self, model, dataset, **kwargs):
         model.before_evaluation(dataset=dataset, task_type=type(self))
         
-    def chatgpt_eval(self,client,question, answer,pred):
+    def chatgpt_eval(self,question, answer,pred):
         try:
             # Compute the correctness score
-            completion = client.chat.completions.create(
-                model="gpt-4o-mini",
+            completion = openai.chat.completions.create(
+                model="gpt-3.5-turbo",
                 # model='gpt-4',
                 messages=[
                     {
@@ -153,11 +153,8 @@ class BaseTask:
         yes_count=0
         no_count=0
         # Load the .env file
-        env_path = find_dotenv('/home/tony/MiniGPT4-video/.env')
-        load_dotenv(env_path)
-        client = openai.OpenAI(api_key=os.getenv("API_KEY"))
         for res in val_result:
-            gpt_response=self.chatgpt_eval(client,res['Q'],res['A'],res['pred'])
+            gpt_response=self.chatgpt_eval(res['Q'],res['A'],res['pred'])
             if gpt_response is None:
                 continue
             try:

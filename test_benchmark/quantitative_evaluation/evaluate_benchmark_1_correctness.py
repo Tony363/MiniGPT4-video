@@ -4,11 +4,9 @@ import argparse
 import json
 import ast
 from multiprocessing.pool import Pool
-from dotenv import load_dotenv,find_dotenv
-import time
+
 
 def parse_args():
-
     parser = argparse.ArgumentParser(description="question-answer-generation-using-gpt-3")
     parser.add_argument("--pred_path", required=True, help="The path to file containing prediction.")
     parser.add_argument("--output_dir", required=True, help="The path to save annotation json files.")
@@ -24,9 +22,6 @@ def annotate(prediction_set, caption_files, output_dir):
     Evaluates question and answer pairs using GPT-3
     Returns a score for correctness.
     """
-    env_path = find_dotenv('/home/tony/MiniGPT4-video/.env')
-    load_dotenv(env_path)
-    client = openai.OpenAI(api_key=os.getenv("API_KEY"))
     for file in caption_files:
         key = file[:-5] # Strip file extension
         qa_set = prediction_set[key]
@@ -35,7 +30,7 @@ def annotate(prediction_set, caption_files, output_dir):
         pred = qa_set['pred']
         try:
             # Compute the correctness score
-            completion = client.chat.completions.create(
+            completion = openai.ChatCompletion.create(
                 model="gpt-3.5-turbo",
                 messages=[
                     {
@@ -65,8 +60,7 @@ def annotate(prediction_set, caption_files, output_dir):
                 ]
             )
             # Convert response to a Python dictionary.
-            # response_message = completion["choices"][0]["message"]["content"]
-            response_message = completion.choices[0].message.content
+            response_message = completion["choices"][0]["message"]["content"]
             response_dict = ast.literal_eval(response_message)
             result_qa_pair = [response_dict, qa_set]
 
@@ -76,7 +70,7 @@ def annotate(prediction_set, caption_files, output_dir):
 
         except Exception as e:
             print(f"Error processing file '{key}': {e}")
-            time.sleep(2)
+
 
 def main():
     """
@@ -87,7 +81,7 @@ def main():
 
     file = open(args.pred_path)
     pred_contents = json.load(file)
-    print(args.pred_path,len(pred_contents))
+
     # Dictionary to store the count of occurrences for each video_id
     video_id_counts = {}
     new_pred_contents = []
@@ -125,9 +119,6 @@ def main():
         prediction_set[id] = qa_set
 
     # Set the OpenAI API key.
-    # load_dotenv()
-    # api_key = os.getenv("API_KEY")
-    # openai.api_key = api_key
     openai.api_key = args.api_key
     num_tasks = args.num_tasks
 
@@ -191,6 +182,9 @@ def main():
 
 
 if __name__ == "__main__":
+    main()
+
+
     '''
     dpo sedbal
     /home/tony/minigptv2/evaluations/dpo_eval_bal.json 396
@@ -465,5 +459,4 @@ if __name__ == "__main__":
     Average score for consistency: 3.477435927374628
     All evaluations completed!
     '''
-    main()
 

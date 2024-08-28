@@ -47,12 +47,21 @@ def get_arguments():
         --consistency-qa /home/tony/MiniGPT4-video/gpt_evaluation/consistency_qa_engagenet.json\
         --rppg-dir /home/tony/nvme2tb/rhythmformer_rppg/validation/validation-tensors
         
+        
+    python3 inference_engagenet.py\
+        --videos-dir /home/tony/engagenet_val/videos\
+        --cfg-path test_configs/mistral_rppg2_test_config.yaml\
+        --ckpt /home/tony/MiniGPT4-video/minigpt4/training_output/engagenet/mistral_rppg2_former/202408260303/checkpoint_9.pth\
+        --num-classes 4\
+        --label-path /home/tony/engagenet_labels/validation_engagement_labels.json\
+        --consistency-qa /home/tony/MiniGPT4-video/gpt_evaluation/consistency_qa_engagenet.json\
+        --rppg-dir /home/tony/nvme2tb/rhythmformer_rppg/validation/validation-tensors
+        
     python3 inference_engagenet.py\
         --videos-dir /home/tony/engagenet_val/videos\
         --cfg-path test_configs/mistral_finetune_test_config.yaml\
-        --ckpt /home/tony/MiniGPT4-video/checkpoints/video_mistral_checkpoint_best.pth\
+        --ckpt minigpt4/training_output/engagenet/mistral/202408240305/checkpoint_9.pth\
         --num-classes 4\
-        --gpu-id 1\
         --label-path /home/tony/engagenet_labels/validation_engagement_labels.json\
         --consistency-qa /home/tony/MiniGPT4-video/gpt_evaluation/consistency_qa_engagenet.json
     
@@ -191,7 +200,7 @@ def main()->None:
     num_classes,max_new_tokens = args.num_classes,args.max_new_tokens
     model, vis_processor = init_model(args)
     model = model.to(config['run']['device'])
-    model.eval()
+    # model.eval()
     
     video_paths = os.listdir(args.videos_dir)
     
@@ -210,18 +219,18 @@ def main()->None:
         
         prepared_images,q_prepared_instruction,q_prompt = prepare_conversation(vid_path,vis_processor,CONV_VISION,args.sys_instruct,args.question)
 
-        samples = {
-            "image":prepared_images.unsqueeze(0).to(config['run']['device']),
-            "instruction_input":[q_prepared_instruction],
-            "choices":classes,
-            "num_choices":[num_classes],
-            "length":[len(prepared_images)],
-        }
+        # samples = {
+        #     "image":prepared_images.unsqueeze(0).to(config['run']['device']),
+        #     "instruction_input":[q_prepared_instruction],
+        #     "choices":classes,
+        #     "num_choices":[num_classes],
+        #     "length":[len(prepared_images)],
+        # }
         rppg_path = os.path.join(args.rppg_dir, f"{vid_id}_0.pt")
         logger.info(f"EXISTS - {os.path.exists(rppg_path)} {rppg_path}")
         if args.rppg_dir and os.path.exists(rppg_path):
             rppg = torch.load(rppg_path).to(config['run']['device'])
-            samples['rppg'] = rppg
+            # samples['rppg'] = rppg
             logger.info(f"RPPG INFERENCE - {rppg is not None}")
             
             a = model.generate(
@@ -285,18 +294,18 @@ def main()->None:
                 lengths=[len(prepared_images)],
                 num_beams=1,
             )    
-        pred_ans = model.predict_class(samples)
-        logger.info(f"{sample}: {pred_ans[0]} - {label[vid_id]}")
+        # pred_ans = model.predict_class(samples)
+        # logger.info(f"{sample}: {pred_ans[0]} - {label[vid_id]}")
         
         prepared_images = prepared_images.to(config['run']['device'])
 
         
-        pred,target = torch.tensor([mapping[pred_ans[0]]]).to(config['run']['device']),torch.tensor([mapping[label[vid_id]]]).to(config['run']['device'])
-        performance = metrics.forward(pred,target)
-        logger.info(f"ACC - {performance['MulticlassAccuracy']}")
-        logger.info(f"PR - {performance['MulticlassPrecision']}")
-        logger.info(f"RE - {performance['MulticlassRecall']}")
-        logger.info(f"F1 - {performance['MulticlassF1Score']}")
+        # pred,target = torch.tensor([mapping[pred_ans[0]]]).to(config['run']['device']),torch.tensor([mapping[label[vid_id]]]).to(config['run']['device'])
+        # performance = metrics.forward(pred,target)
+        # logger.info(f"ACC - {performance['MulticlassAccuracy']}")
+        # logger.info(f"PR - {performance['MulticlassPrecision']}")
+        # logger.info(f"RE - {performance['MulticlassRecall']}")
+        # logger.info(f"F1 - {performance['MulticlassF1Score']}")
         
         pred_set:dict={
             'video_name':vid_id,
@@ -311,12 +320,12 @@ def main()->None:
         pred_samples.append(pred_set)
         rppg = None
         
-    performance = metrics.compute()
-    logger.info(f"FINAL ACC - {performance['MulticlassAccuracy']}")
-    logger.info(f"FINAL PR - {performance['MulticlassPrecision']}")
-    logger.info(f"FINAL RE - {performance['MulticlassRecall']}")
-    logger.info(f"FINAL F1 - {performance['MulticlassF1Score']}")
-    metrics.reset()
+    # performance = metrics.compute()
+    # logger.info(f"FINAL ACC - {performance['MulticlassAccuracy']}")
+    # logger.info(f"FINAL PR - {performance['MulticlassPrecision']}")
+    # logger.info(f"FINAL RE - {performance['MulticlassRecall']}")
+    # logger.info(f"FINAL F1 - {performance['MulticlassF1Score']}")
+    # metrics.reset()
     
     model_card = args.cfg_path.split(".yaml")[0].split(os.sep)[-1]
     with open(f'gpt_evaluation/{model_card}_eval.json','w') as f:
@@ -363,7 +372,36 @@ if __name__ == "__main__":
     Average score for detailed orientation: 2.1260504201680672      
     Average score for contextual understanding: 2.637721755368814
     Average score temporal understanding: 2.604108309990663         
-    Average score for consistency: 0.8141923436041083               
+    Average score for consistency: 0.8141923436041083   
+
+    
+    mistral base
+    Average score for correctness: 3.1333333333333333
+    Average score for detailed orientation: 2.3076923076923075
+    Average score for contextual understanding: 2.5753846153846154
+    Average score temporal understanding: 0.5528205128205128
+    Average score for consistency: 2.3528205128205126
+    
+    
+    mistral finetune
+    Average score for correctness: 3.9292307692307693
+    Average score for detailed orientation: 2.4707692307692306
+    Average score for contextual understanding: 3.4123076923076923
+    Average score temporal understanding: 0.838974358974359
+    Average score for consistency: 2.8984615384615386
+    
+    mistral rppg                      
+    Average score for correctness: 2.7394871794871793
+    Average score for detailed orientation: 2.365128205128205
+    Average score for contextual understanding: 2.758974358974359
+    Average score temporal understanding: 2.884102564102564
+    Average score for consistency: 2.5025641025641026
+    
+    mistral rppg2
+    Average score for correctness: 3.675897435897436
+    Average score for detailed orientation: 3.7056410256410257
+    Average score for contextual understanding: 3.8964102564102565
+    Average score temporal understanding: 3.4728205128205127
     '''
     program = os.path.basename(__file__)
     if os.path.exists(f"logs/{os.path.splitext(program)[0]}.log"):

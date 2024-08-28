@@ -69,7 +69,7 @@ class MiniGPT4_llama_v2_Rppg2(Blip2Base):
         use_grad_checkpoint_llm=False,
         max_context_len=3800,
         remove_template = False,
-        # rppg_encoder_weights=None,
+        rppg_encoder_weights=None,
         device: torch.device = torch.device("cuda"),
     ):
         super().__init__()
@@ -81,7 +81,6 @@ class MiniGPT4_llama_v2_Rppg2(Blip2Base):
             from minigpt4.models.modeling_llama_v2 import LlamaForCausalLM as llm_model
             logger.info("Llama model")
             self.model_type = "Llama"
-            
         self.tokenizer = self.init_tokenizer()
         self.low_resource = low_resource
         self.token_pooling = token_pooling
@@ -179,7 +178,7 @@ class MiniGPT4_llama_v2_Rppg2(Blip2Base):
         self.llama_model.print_trainable_parameters()
 
         if self.use_grad_checkpoint_llm:
-            self.llama_model.gradient_checkpointing_enable(gradient_checkpointing_kwargs={"use_reentrant": False})
+            self.llama_model.gradient_checkpointing_enable()
        
         logger.info('Loading LLAMA Done')
 
@@ -191,27 +190,15 @@ class MiniGPT4_llama_v2_Rppg2(Blip2Base):
             self.llama_proj = nn.Linear(
                 1408, self.llama_model.config.hidden_size
             )
-        
-        '''
-        RuntimeError: Expected to have finished reduction in the prior iteration before starting a new one. This error indicates that your module has parameters that were not used in producing loss. You can enable unused parameter detection by passing the keyword argument `find_unused_parameters=True` to `torch.nn.parallel.DistributedDataParallel`, and by 
-making sure all `forward` function outputs participate in calculating loss. 
-If you already have done the above, then the distributed data parallel module wasn't able to locate the output tensors in the return value of your module's `forward` function. Please include the loss function and the structure of the return value of `forward` of your module when reporting this issue (e.g. list, dict, iterable).
-Parameter indices which did not receive grad for rank 0: 130 131
- In addition, you can set the environment variable TORCH_DISTRIBUTED_DEBUG to either INFO or DETAIL to print out information about which particular parameters did not receive gradient on this rank as part of this error
-        '''
-        self.rppg_proj = nn.Linear(
-            296, self.llama_model.config.hidden_size
-        )
-        ln_rppg = nn.LayerNorm(296)
-        
-        # self.rppg_proj = AE()
-        # self.rppg_proj.load_state_dict(torch.load(rppg_encoder_weights,map_location=self.device))
-        # for name,param in self.rppg_proj.named_parameters():
-        #     param.requires_grad = False
-        # #     param = param.to(self._device)
-        # self.rppg_proj = self.rppg_proj.to(self.device)
-        # self.rppg_proj.eval()
-        # self.rppg_proj.train = disabled_train # disable train so no batchnorm1d error during training
+            
+        self.rppg_proj = AE()
+        self.rppg_proj.load_state_dict(torch.load(rppg_encoder_weights,map_location=self.device))
+        for name,param in self.rppg_proj.named_parameters():
+            param.requires_grad = False
+            # param = param.to(self._device)
+        # self.rppg_proj = self.rppg_proj.to(self._device)
+        self.rppg_proj.eval()
+        self.rppg_proj.train = disabled_train # disable train so no batchnorm1d error during training
         logger.info("RPPG PROJ LOADED...")
 
         self.max_txt_len = max_txt_len
@@ -228,12 +215,8 @@ Parameter indices which did not receive grad for rank 0: 130 131
             self.prompt_list = []
             
         logger.info("MODEL INITIALIZED....")
-    
-    # @property
-    # def device(self):
-    #     logger.info("MODEL DEVICE - {}".format(self._device))
-    #     return self._device
-
+        
+        
     def encode_img(self, image):
         image = image.to(self.ln_vision.weight.device)
         device = image.device
@@ -271,11 +254,11 @@ Parameter indices which did not receive grad for rank 0: 130 131
             rppg is appended every rppg_interval
             if 45 images are there, rppg will be appended every 9th image
             '''
-            # logger.info(f"INSERT RPPG HERE ")
+            insert_position = len(mixed_embs) - 1
             rppg_tag = self.llama_tokenizer("<rppg>", return_tensors="pt", add_special_tokens=False)#.to(self._device)
             rppg_tag_embed = self.embed_tokens(rppg_tag.input_ids)
-            mixed_embs.insert(len(mixed_embs) - 2,rppg_tag_embed)
-            mixed_embs.insert(len(mixed_embs) - 2,rppg)                    
+            mixed_embs.insert(insert_position, rppg_tag_embed)
+            mixed_embs.insert(insert_position, rppg)
             mixed_embs += [seg_embs[-1]]
         else:
             mixed_embs = [emb for pair in zip(seg_embs[:-1], img_list) for emb in pair] + [seg_embs[-1]]
@@ -318,27 +301,26 @@ Parameter indices which did not receive grad for rank 0: 130 131
                     p_embed = self.embed_tokens(p_tokens.input_ids)
                     m_emb = torch.cat([p_embed, each_img_embed[None][:, idx*pn:(idx+1)*pn]], dim=1)
                     interleave_emb.append(m_emb)
-                
-                if rppg is not None:
-                    """
-                    crux of the logic for forward pass to append rppg tag and rppg upsampled tensor
-                    """
-                    # logger.info(f"INSERT RPPG HERE {len(interleave_emb) - 1} - {len(interleave_emb)}")
-                    rppg_tag = self.llama_tokenizer("<rppg>", return_tensors="pt", add_special_tokens=False).to(img_embeds.device)
-                    rppg_embed = self.embed_tokens(rppg_tag.input_ids)
-                    m_emb = torch.cat([
-                        rppg_embed,
-                        # rppg[:,idx//rppg_interval,:].unsqueeze(0)
-                        rppg
-                    ], dim=1)
-                    interleave_emb.insert(len(interleave_emb) - 1,m_emb)
+
                 
                 wrapped_emb = torch.cat(interleave_emb, dim=1)
                 p_tokens = self.llama_tokenizer(p_segs[-1], return_tensors="pt", add_special_tokens=False).to(img_embeds.device)
                 p_embed = self.embed_tokens(p_tokens.input_ids)
                 wrapped_emb = torch.cat([wrapped_emb,p_embed], dim=1)
                 emb_lists.append(wrapped_emb)
-
+                
+            if rppg is not None:
+                """
+                crux of the logic for forward pass to append rppg tag and rppg upsampled tensor
+                rppg is appended every rppg_interval
+                if 45 images are there, rppg will be appended every 9th image
+                """
+                rppg_tag = self.llama_tokenizer("<rppg>", return_tensors="pt", add_special_tokens=False).to(img_embeds.device)
+                rppg_embed = self.embed_tokens(rppg_tag.input_ids)
+                # logger.info(f"INDEXING RPPG {idx % rppg.shape[1]} {rppg[:,idx % rppg.shape[1],:].shape}")
+                m_emb = torch.cat([rppg_embed,rppg], dim=1)
+                interleave_emb.insert(len(emb_lists) - 1,m_emb)
+                
             emb_lens = [emb.shape[1] for emb in emb_lists]
             pad_emb = self.embed_tokens(torch.tensor(self.llama_tokenizer.pad_token_id, device=img_embeds.device))
 
@@ -451,6 +433,15 @@ Parameter indices which did not receive grad for rank 0: 130 131
             img_embeds, img_atts = self.encode_img(samples["image"])
         else:
             img_embeds = img_atts = None
+        if 'rppg' in samples and not (samples['rppg'] == 0).all():
+            """
+            encodes rppg
+            """
+            rppg = samples['rppg']
+            rppg = self.rppg_proj.encode(rppg)[0].unsqueeze(0)
+            # logger.info(f"ENCODED RPPG - {rppg.shape}")
+            # rppg = torch.ones(1,1,5,4096,dtype=torch.int8).to("cuda:0")
+
             
         if 'conv_q' in samples:
             # handeling conversation datasets
@@ -485,17 +476,14 @@ Parameter indices which did not receive grad for rank 0: 130 131
                 """
                 to go to prompt wrapping of images, prompt and rppg with fixed context window
                 """
-                # logger.info(f"PROMPT WRAP WITH RPPG CUT AT LENGTH - {samples['rppg'].shape} {samples['length']}")
-
                 bsz, pn, hs = img_embeds.shape
                 img_embeds = img_embeds.reshape(len(samples['image']), -1, pn, hs) # (200,64,4096) -> (4,50,64,4096)
-                cond_embeds, cond_atts = self.prompt_wrap(img_embeds, img_atts, instruction, lengths=samples['length'],rppg=samples['rppg'])
+                cond_embeds, cond_atts = self.prompt_wrap(img_embeds, img_atts, instruction, lengths=samples['length'],rppg=rppg)
             elif 'rppg' in samples and not (samples['rppg'] == 0).all():
                 """
                 to go to prompt wrapping of images, prompt and rppg
                 """
-                # logger.info(f"PROMPT WRAP WITH RPPG - {samples['rppg'].shape}")
-                cond_embeds, cond_atts = self.prompt_wrap(img_embeds, img_atts, instruction,rppg=samples['rppg'])
+                cond_embeds, cond_atts = self.prompt_wrap(img_embeds, img_atts, instruction,rppg=rppg)
             elif 'length' in samples:
                 # the input is a image train (like videos)
                 bsz, pn, hs = img_embeds.shape
@@ -531,16 +519,8 @@ Parameter indices which did not receive grad for rank 0: 130 131
 
     def forward(self, samples, reduction="mean"):
         # prepare the embedding to condition and the embedding to regress
-
-        if 'rppg' in samples and not (samples['rppg'] == 0).all():
-            """
-            encodes rppg
-            """
-            # logger.info(f"INPUT RPPG - {samples['rppg'].shape}")
-            samples['rppg'] = self.ln_rppg(self.rppg_proj(samples['rppg']).unsqueeze(0))
-            # logger.info(f"ENCODED RPPG - {samples['rppg'].shape}")
-         
-            
+        # logger.info(samples.keys())
+        # logger.info(samples['rppg'])
         cond_embeds, cond_atts, regress_embeds, regress_atts, part_targets = \
             self.preparing_embedding(samples)
 
@@ -571,7 +551,7 @@ Parameter indices which did not receive grad for rank 0: 130 131
                 reduction=reduction
             )
         loss = outputs.loss
-        # logger.info(f"LOSS - {loss}")
+
         return {"loss": loss}
 
     @torch.no_grad()
@@ -614,8 +594,7 @@ Parameter indices which did not receive grad for rank 0: 130 131
             encode batches number of rppgs
             """
             rppg = rppg.flatten().unsqueeze(0).to(device=self.device,dtype=self.rppg_proj.encoder[0].weight.dtype)
-            rppgs = [self.ln_rppg(self.rppg_proj(rppg))]
-            logger.info(f"ENCODED RPPG - {rppgs[0].shape}")
+            rppgs = [self.rppg_proj.encode(rppg)]
             # rppgs = [torch.ones(1,5,4096,dtype=torch.int8).to(self._device)]    
         
         if lengths is not None:
@@ -630,7 +609,6 @@ Parameter indices which did not receive grad for rank 0: 130 131
             """
             wrap the images, prompts and rppg by batches
             """
-            logger.info("GENERATE METHOD WRAPPING IMAGES PROMPTS AND RPPG")
             batch_embs = [self.get_context_emb(text, img_list,rppg) for text, img_list,rppg in zip(texts, image_lists,rppgs)]
         else:
             batch_embs = [self.get_context_emb(text, img_list) for text, img_list in zip(texts, image_lists)]
@@ -888,7 +866,7 @@ Parameter indices which did not receive grad for rank 0: 130 131
         use_grad_checkpoint_llm = cfg.get("use_grad_checkpoint_llm", False)
         max_context_len = cfg.get("max_context_len", 3800)
         remove_template = cfg.get("remove_template", False)
-        # rppg_encoder_weights = cfg.get("rppg_encoder_weights",  "minigpt4/autoencoder/model_weights_RhytmFormer.pth")
+        rppg_encoder_weights = cfg.get("rppg_encoder_weights",  "minigpt4/autoencoder/model_weights_RhytmFormer.pth")
         device = cfg.get("device", "cuda")
 
         model = cls(
@@ -912,7 +890,7 @@ Parameter indices which did not receive grad for rank 0: 130 131
             use_grad_checkpoint_llm=use_grad_checkpoint_llm,
             max_context_len=max_context_len,
             remove_template = remove_template,
-            # rppg_encoder_weights=rppg_encoder_weights,
+            rppg_encoder_weights=rppg_encoder_weights,
             device=device
         )
 
@@ -1956,7 +1934,7 @@ class MiniGPT4_llama_v2(Blip2Base):
         )
         self.llama_model = get_peft_model(self.llama_model, loraconfig)
 
-        self.llama_model.logger.info_trainable_parameters()
+        self.llama_model.print_trainable_parameters()
 
         if self.use_grad_checkpoint_llm:
             self.llama_model.gradient_checkpointing_enable()

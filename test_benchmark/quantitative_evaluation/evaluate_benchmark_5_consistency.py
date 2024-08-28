@@ -4,7 +4,6 @@ import argparse
 import json
 import ast
 from multiprocessing.pool import Pool
-from dotenv import load_dotenv,find_dotenv
 
 
 def parse_args():
@@ -23,9 +22,6 @@ def annotate(prediction_set, caption_files, output_dir):
     Evaluates question and answer pairs using GPT-3 and
     returns a score for consistency.
     """
-    env_path = find_dotenv('/home/tony/MiniGPT4-video/.env')
-    load_dotenv(env_path)
-    client = openai.OpenAI(api_key=os.getenv("API_KEY"))
     for file in caption_files:
         key = file[:-5] # Strip file extension
         qa_set = prediction_set[key]
@@ -36,7 +32,7 @@ def annotate(prediction_set, caption_files, output_dir):
         pred2 = qa_set['pred2']
         try:
             # Compute the consistency score
-            completion = client.chat.completions.create(
+            completion = openai.ChatCompletion.create(
                 model="gpt-3.5-turbo",
                 messages=[
                     {
@@ -69,8 +65,7 @@ def annotate(prediction_set, caption_files, output_dir):
                 ]
             )
             # Convert response to a Python dictionary.
-            # response_message = completion["choices"][0]["message"]["content"]
-            response_message = completion.choices[0].message.content
+            response_message = completion["choices"][0]["message"]["content"]
             response_dict = ast.literal_eval(response_message)
             result_qa_pair = [response_dict, qa_set]
 
@@ -133,6 +128,7 @@ def main():
     # Set the OpenAI API key.
     openai.api_key = args.api_key
     num_tasks = args.num_tasks
+
     # While loop to ensure that all captions are processed.
     while True:
         try:
@@ -194,4 +190,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
