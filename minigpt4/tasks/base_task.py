@@ -89,7 +89,7 @@ class BaseTask:
         return loss
 
     def valid_step(self, model, samples):
-        if 'rppg' in samples and not (samples['rppg'] == 0).all():
+        if 'rppg' in samples and not (samples['rppg'].shape[0] == 1):
             answers = model.generate(
                 images=samples['image'],
                 texts=samples['instruction_input'],
@@ -97,6 +97,7 @@ class BaseTask:
                 rppg=samples['rppg'],
             )
             return answers
+        
         answers = model.generate(
             images=samples['image'],
             texts=samples['instruction_input'],

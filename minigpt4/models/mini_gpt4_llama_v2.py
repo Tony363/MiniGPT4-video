@@ -6,7 +6,7 @@ from torch.cuda.amp import autocast as autocast
 import torch.nn as nn
 
 from minigpt4.common.registry import registry
-from minigpt4.models.blip2 import Blip2Base, disabled_train
+from minigpt4.models.blip2 import Blip2Base, disabled_train, LayerNorm
 # from minigpt4.models.modeling_llama_v2 import LlamaForCausalLM as llm_model
 # minigpt4.models.modeling_mistral import MistralForCausalLM as llm_model
 from minigpt4.conversation.conversation import Conversation, SeparatorStyle, StoppingCriteriaList, StoppingCriteriaSub
@@ -18,8 +18,8 @@ from peft import (
     LoraConfig,
     get_peft_model,
     get_peft_model_state_dict,
-    # prepare_model_for_int8_training,
-    prepare_model_for_kbit_training,
+    prepare_model_for_int8_training,
+    # prepare_model_for_kbit_training,
     set_peft_model_state_dict,
 )
 import time
@@ -161,8 +161,8 @@ class MiniGPT4_llama_v2_Rppg2(Blip2Base):
             
             
         # self.llama_model.resize_token_embeddings(len(self.llama_tokenizer))
-        # self.llama_model = prepare_model_for_int8_training(self.llama_model)
-        self.llama_model = prepare_model_for_kbit_training(self.llama_model)
+        self.llama_model = prepare_model_for_int8_training(self.llama_model)
+        # self.llama_model = prepare_model_for_kbit_training(self.llama_model)
 
 
         loraconfig = LoraConfig(
@@ -309,17 +309,17 @@ class MiniGPT4_llama_v2_Rppg2(Blip2Base):
                 wrapped_emb = torch.cat([wrapped_emb,p_embed], dim=1)
                 emb_lists.append(wrapped_emb)
                 
-            if rppg is not None:
-                """
-                crux of the logic for forward pass to append rppg tag and rppg upsampled tensor
-                rppg is appended every rppg_interval
-                if 45 images are there, rppg will be appended every 9th image
-                """
-                rppg_tag = self.llama_tokenizer("<rppg>", return_tensors="pt", add_special_tokens=False).to(img_embeds.device)
-                rppg_embed = self.embed_tokens(rppg_tag.input_ids)
-                # logger.info(f"INDEXING RPPG {idx % rppg.shape[1]} {rppg[:,idx % rppg.shape[1],:].shape}")
-                m_emb = torch.cat([rppg_embed,rppg], dim=1)
-                interleave_emb.insert(len(emb_lists) - 1,m_emb)
+                if rppg is not None:
+                    """
+                    crux of the logic for forward pass to append rppg tag and rppg upsampled tensor
+                    rppg is appended every rppg_interval
+                    if 45 images are there, rppg will be appended every 9th image
+                    """
+                    rppg_tag = self.llama_tokenizer("<rppg>", return_tensors="pt", add_special_tokens=False).to(img_embeds.device)
+                    rppg_embed = self.embed_tokens(rppg_tag.input_ids)
+                    # logger.info(f"INDEXING RPPG {idx % rppg.shape[1]} {rppg[:,idx % rppg.shape[1],:].shape}")
+                    m_emb = torch.cat([rppg_embed,rppg], dim=1)
+                    interleave_emb.insert(len(emb_lists) - 1,m_emb)
                 
             emb_lens = [emb.shape[1] for emb in emb_lists]
             pad_emb = self.embed_tokens(torch.tensor(self.llama_tokenizer.pad_token_id, device=img_embeds.device))
@@ -1033,8 +1033,8 @@ class MiniGPT4_llama_v2_Rppg(Blip2Base):
             
             
         # self.llama_model.resize_token_embeddings(len(self.llama_tokenizer))
-        # self.llama_model = prepare_model_for_int8_training(self.llama_model)
-        self.llama_model = prepare_model_for_kbit_training(self.llama_model)
+        self.llama_model = prepare_model_for_int8_training(self.llama_model)
+        # self.llama_model = prepare_model_for_kbit_training(self.llama_model)
 
 
         loraconfig = LoraConfig(
@@ -1914,14 +1914,13 @@ class MiniGPT4_llama_v2(Blip2Base):
                 llama_model,
                 torch_dtype=torch.float16,
                 low_cpu_mem_usage=True,
-                device_map={'':self._device}, #torch.cuda.current_device()
             )
             
         self.llama_model = self.llama_model.to(self._device)
             
         # self.llama_model.resize_token_embeddings(len(self.llama_tokenizer))
-        # self.llama_model = prepare_model_for_int8_training(self.llama_model)
-        self.llama_model = prepare_model_for_kbit_training(self.llama_model)
+        self.llama_model = prepare_model_for_int8_training(self.llama_model)
+        # self.llama_model = prepare_model_for_kbit_training(self.llama_model)
 
 
         loraconfig = LoraConfig(

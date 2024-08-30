@@ -1090,7 +1090,7 @@ class EngageNetDataset(BaseDataset, __DisplMixin):
         # Combine the images and the instruction
         instruction = img_placeholder + '\n' + instruction
         # Return the images, instruction, answer, video_id, and the length of the video
-        # logger.info(f"LOADING VIDID - {video_id}")
+        logger.info(f"LOADING VIDID - {video_id}")
         output = {
             "image": images,
             "answer": answer,
@@ -1217,7 +1217,7 @@ class EngageNetRppgDataset(BaseDataset, __DisplMixin):
         # logger.info(f'RPPG PATH - {os.path.join(self.rppg_dir,f"{video_id}_0.pt")} {os.path.exists(os.path.join(self.rppg_dir,f"{video_id}_0.pt"))}')
         if os.path.exists(os.path.join(self.rppg_dir,f"{video_id}_0.pt")):
             rppg = torch.load(os.path.join(self.rppg_dir,f"{video_id}_0.pt")).flatten().float()
-        # logger.info(f"LOADING VIDID - {video_id}")
+        logger.info(f"LOADING VIDID - {video_id}")
         output = {
             "image": images,
             "answer": answer,

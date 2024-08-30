@@ -122,6 +122,8 @@ class RunnerBase:
             num_parameters = 0
             p_wd, p_non_wd = [], []
             for n, p in self.model.named_parameters():
+                # if p.requires_grad and p.grad is None:
+                #     logger.info(f"{n} did not receive gradients")
                 if not p.requires_grad:
                     continue  # frozen weights
                 # logger.info(n)

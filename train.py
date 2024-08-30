@@ -126,7 +126,7 @@ def main():
 
 if __name__ == "__main__":
     import os
-    wandb.init()
+    # wandb.init()
     # os.environ["WANDB_MODE"] = "dryrun"
     # torch.multiprocessing.set_start_method('spawn', force=True)
     main()

@@ -4,12 +4,10 @@ source /home/tony/MiniGPT4-video/.env
 set +o allexport
 echo $API_KEY
 # Define common arguments for all scripts
-PRED_GENERIC="/home/tony/MiniGPT4-video/gpt_evaluation/mistral_rppg2_test_config_eval.json"
-OUTPUT_DIR="/home/tony/MiniGPT4-video/gpt_evaluation/mistral_rppg2_test_config_eval"
+PRED_GENERIC="/home/tony/MiniGPT4-video/gpt_evaluation/mistral_finetune_test_config_eval.json"
+OUTPUT_DIR="/home/tony/MiniGPT4-video/gpt_evaluation/mistral_finetune_test_config_eval"
 
 NUM_TASKS=14
-
-
 
 # Run the "correctness" evaluation script
 python evaluate_benchmark_1_correctness.py \

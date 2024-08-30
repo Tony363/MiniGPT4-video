@@ -382,13 +382,18 @@ if __name__ == "__main__":
     Average score temporal understanding: 0.5528205128205128
     Average score for consistency: 2.3528205128205126
     
-    
     mistral finetune
     Average score for correctness: 3.9292307692307693
     Average score for detailed orientation: 2.4707692307692306
     Average score for contextual understanding: 3.4123076923076923
     Average score temporal understanding: 0.838974358974359
     Average score for consistency: 2.8984615384615386
+    
+    Average score for correctness: 3.8984615384615386
+    Average score for detailed orientation: 2.2594871794871794
+    Average score for contextual understanding: 3.233846153846154
+    Average score temporal understanding: 0.7938461538461539
+    Average score for consistency: 2.838974358974359
     
     mistral rppg                      
     Average score for correctness: 2.7394871794871793
@@ -402,6 +407,7 @@ if __name__ == "__main__":
     Average score for detailed orientation: 3.7056410256410257
     Average score for contextual understanding: 3.8964102564102565
     Average score temporal understanding: 3.4728205128205127
+    Average score for consistency: 3.797948717948718
     '''
     program = os.path.basename(__file__)
     if os.path.exists(f"logs/{os.path.splitext(program)[0]}.log"):

@@ -22,6 +22,8 @@ from minigpt4.common.logger import MetricLogger
 from minigpt4.models.base_model import BaseModel
 from minigpt4.models.Qformer import BertConfig, BertLMHeadModel
 from minigpt4.models.eva_vit import create_eva_vit_g
+from minigpt4.autoencoder.autoencoder import AE
+
 from transformers import BertTokenizer
 
 
@@ -68,7 +70,7 @@ class Blip2Base(BaseModel):
 
         ln_vision = LayerNorm(visual_encoder.num_features)
         return visual_encoder, ln_vision
-
+    
     def load_from_pretrained(self, url_or_filename):
         if is_url(url_or_filename):
             cached_file = download_cached_file(
