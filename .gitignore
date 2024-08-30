@@ -1,3 +1,5 @@
+adapter_output/*
+*.safetensors
 *.env
 gguf/*
 # Byte-compiled / optimized / DLL files
