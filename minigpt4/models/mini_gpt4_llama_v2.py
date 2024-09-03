@@ -18,13 +18,8 @@ from peft import (
     LoraConfig,
     get_peft_model,
     get_peft_model_state_dict,
-<<<<<<< HEAD
     prepare_model_for_int8_training,
     # prepare_model_for_kbit_training,
-=======
-    # prepare_model_for_int8_training,
-    prepare_model_for_kbit_training,
->>>>>>> 7ee24512cec60775ff9cc2794956508e6d119a57
     set_peft_model_state_dict,
 )
 import time
@@ -74,11 +69,7 @@ class MiniGPT4_llama_v2_Rppg2(Blip2Base):
         use_grad_checkpoint_llm=False,
         max_context_len=3800,
         remove_template = False,
-<<<<<<< HEAD
         rppg_encoder_weights=None,
-=======
-        # rppg_encoder_weights=None,
->>>>>>> 7ee24512cec60775ff9cc2794956508e6d119a57
         device: torch.device = torch.device("cuda"),
     ):
         super().__init__()
@@ -171,13 +162,8 @@ class MiniGPT4_llama_v2_Rppg2(Blip2Base):
             
             
         # self.llama_model.resize_token_embeddings(len(self.llama_tokenizer))
-<<<<<<< HEAD
         self.llama_model = prepare_model_for_int8_training(self.llama_model)
         # self.llama_model = prepare_model_for_kbit_training(self.llama_model)
-=======
-        # self.llama_model = prepare_model_for_int8_training(self.llama_model)
-        self.llama_model = prepare_model_for_kbit_training(self.llama_model)
->>>>>>> 7ee24512cec60775ff9cc2794956508e6d119a57
 
 
         loraconfig = LoraConfig(
@@ -193,11 +179,7 @@ class MiniGPT4_llama_v2_Rppg2(Blip2Base):
         self.llama_model.print_trainable_parameters()
 
         if self.use_grad_checkpoint_llm:
-<<<<<<< HEAD
             self.llama_model.gradient_checkpointing_enable()
-=======
-            self.llama_model.gradient_checkpointing_enable(gradient_checkpointing_kwargs={"use_reentrant": False})
->>>>>>> 7ee24512cec60775ff9cc2794956508e6d119a57
        
         logger.info('Loading LLAMA Done')
 
@@ -209,7 +191,6 @@ class MiniGPT4_llama_v2_Rppg2(Blip2Base):
             self.llama_proj = nn.Linear(
                 1408, self.llama_model.config.hidden_size
             )
-<<<<<<< HEAD
             
         self.rppg_proj = AE()
         self.rppg_proj.load_state_dict(torch.load(rppg_encoder_weights,map_location=self.device))
@@ -219,29 +200,6 @@ class MiniGPT4_llama_v2_Rppg2(Blip2Base):
         # self.rppg_proj = self.rppg_proj.to(self._device)
         self.rppg_proj.eval()
         self.rppg_proj.train = disabled_train # disable train so no batchnorm1d error during training
-=======
-        
-        '''
-        RuntimeError: Expected to have finished reduction in the prior iteration before starting a new one. This error indicates that your module has parameters that were not used in producing loss. You can enable unused parameter detection by passing the keyword argument `find_unused_parameters=True` to `torch.nn.parallel.DistributedDataParallel`, and by 
-making sure all `forward` function outputs participate in calculating loss. 
-If you already have done the above, then the distributed data parallel module wasn't able to locate the output tensors in the return value of your module's `forward` function. Please include the loss function and the structure of the return value of `forward` of your module when reporting this issue (e.g. list, dict, iterable).
-Parameter indices which did not receive grad for rank 0: 130 131
- In addition, you can set the environment variable TORCH_DISTRIBUTED_DEBUG to either INFO or DETAIL to print out information about which particular parameters did not receive gradient on this rank as part of this error
-        '''
-        self.rppg_proj = nn.Linear(
-            296, self.llama_model.config.hidden_size
-        )
-        ln_rppg = nn.LayerNorm(296)
-        
-        # self.rppg_proj = AE()
-        # self.rppg_proj.load_state_dict(torch.load(rppg_encoder_weights,map_location=self.device))
-        # for name,param in self.rppg_proj.named_parameters():
-        #     param.requires_grad = False
-        # #     param = param.to(self._device)
-        # self.rppg_proj = self.rppg_proj.to(self.device)
-        # self.rppg_proj.eval()
-        # self.rppg_proj.train = disabled_train # disable train so no batchnorm1d error during training
->>>>>>> 7ee24512cec60775ff9cc2794956508e6d119a57
         logger.info("RPPG PROJ LOADED...")
 
         self.max_txt_len = max_txt_len
@@ -258,17 +216,8 @@ Parameter indices which did not receive grad for rank 0: 130 131
             self.prompt_list = []
             
         logger.info("MODEL INITIALIZED....")
-<<<<<<< HEAD
         
         
-=======
-    
-    # @property
-    # def device(self):
-    #     logger.info("MODEL DEVICE - {}".format(self._device))
-    #     return self._device
-
->>>>>>> 7ee24512cec60775ff9cc2794956508e6d119a57
     def encode_img(self, image):
         image = image.to(self.ln_vision.weight.device)
         device = image.device
@@ -306,19 +255,11 @@ Parameter indices which did not receive grad for rank 0: 130 131
             rppg is appended every rppg_interval
             if 45 images are there, rppg will be appended every 9th image
             '''
-<<<<<<< HEAD
             insert_position = len(mixed_embs) - 1
             rppg_tag = self.llama_tokenizer("<rppg>", return_tensors="pt", add_special_tokens=False)#.to(self._device)
             rppg_tag_embed = self.embed_tokens(rppg_tag.input_ids)
             mixed_embs.insert(insert_position, rppg_tag_embed)
             mixed_embs.insert(insert_position, rppg)
-=======
-            # logger.info(f"INSERT RPPG HERE ")
-            rppg_tag = self.llama_tokenizer("<rppg>", return_tensors="pt", add_special_tokens=False)#.to(self._device)
-            rppg_tag_embed = self.embed_tokens(rppg_tag.input_ids)
-            mixed_embs.insert(len(mixed_embs) - 2,rppg_tag_embed)
-            mixed_embs.insert(len(mixed_embs) - 2,rppg)                    
->>>>>>> 7ee24512cec60775ff9cc2794956508e6d119a57
             mixed_embs += [seg_embs[-1]]
         else:
             mixed_embs = [emb for pair in zip(seg_embs[:-1], img_list) for emb in pair] + [seg_embs[-1]]
@@ -361,24 +302,6 @@ Parameter indices which did not receive grad for rank 0: 130 131
                     p_embed = self.embed_tokens(p_tokens.input_ids)
                     m_emb = torch.cat([p_embed, each_img_embed[None][:, idx*pn:(idx+1)*pn]], dim=1)
                     interleave_emb.append(m_emb)
-<<<<<<< HEAD
-
-=======
-                
-                if rppg is not None:
-                    """
-                    crux of the logic for forward pass to append rppg tag and rppg upsampled tensor
-                    """
-                    # logger.info(f"INSERT RPPG HERE {len(interleave_emb) - 1} - {len(interleave_emb)}")
-                    rppg_tag = self.llama_tokenizer("<rppg>", return_tensors="pt", add_special_tokens=False).to(img_embeds.device)
-                    rppg_embed = self.embed_tokens(rppg_tag.input_ids)
-                    m_emb = torch.cat([
-                        rppg_embed,
-                        # rppg[:,idx//rppg_interval,:].unsqueeze(0)
-                        rppg
-                    ], dim=1)
-                    interleave_emb.insert(len(interleave_emb) - 1,m_emb)
->>>>>>> 7ee24512cec60775ff9cc2794956508e6d119a57
                 
                 wrapped_emb = torch.cat(interleave_emb, dim=1)
                 p_tokens = self.llama_tokenizer(p_segs[-1], return_tensors="pt", add_special_tokens=False).to(img_embeds.device)
@@ -510,7 +433,6 @@ Parameter indices which did not receive grad for rank 0: 130 131
             img_embeds, img_atts = self.encode_img(samples["image"])
         else:
             img_embeds = img_atts = None
-<<<<<<< HEAD
         if 'rppg' in samples and not (samples['rppg'] == 0).all():
             """
             encodes rppg
@@ -520,8 +442,6 @@ Parameter indices which did not receive grad for rank 0: 130 131
             # logger.info(f"ENCODED RPPG - {rppg.shape}")
             # rppg = torch.ones(1,1,5,4096,dtype=torch.int8).to("cuda:0")
 
-=======
->>>>>>> 7ee24512cec60775ff9cc2794956508e6d119a57
             
         if 'conv_q' in samples:
             # handeling conversation datasets
@@ -556,27 +476,14 @@ Parameter indices which did not receive grad for rank 0: 130 131
                 """
                 to go to prompt wrapping of images, prompt and rppg with fixed context window
                 """
-<<<<<<< HEAD
                 bsz, pn, hs = img_embeds.shape
                 img_embeds = img_embeds.reshape(len(samples['image']), -1, pn, hs) # (200,64,4096) -> (4,50,64,4096)
                 cond_embeds, cond_atts = self.prompt_wrap(img_embeds, img_atts, instruction, lengths=samples['length'],rppg=rppg)
-=======
-                # logger.info(f"PROMPT WRAP WITH RPPG CUT AT LENGTH - {samples['rppg'].shape} {samples['length']}")
-
-                bsz, pn, hs = img_embeds.shape
-                img_embeds = img_embeds.reshape(len(samples['image']), -1, pn, hs) # (200,64,4096) -> (4,50,64,4096)
-                cond_embeds, cond_atts = self.prompt_wrap(img_embeds, img_atts, instruction, lengths=samples['length'],rppg=samples['rppg'])
->>>>>>> 7ee24512cec60775ff9cc2794956508e6d119a57
             elif 'rppg' in samples and not (samples['rppg'] == 0).all():
                 """
                 to go to prompt wrapping of images, prompt and rppg
                 """
-<<<<<<< HEAD
                 cond_embeds, cond_atts = self.prompt_wrap(img_embeds, img_atts, instruction,rppg=rppg)
-=======
-                # logger.info(f"PROMPT WRAP WITH RPPG - {samples['rppg'].shape}")
-                cond_embeds, cond_atts = self.prompt_wrap(img_embeds, img_atts, instruction,rppg=samples['rppg'])
->>>>>>> 7ee24512cec60775ff9cc2794956508e6d119a57
             elif 'length' in samples:
                 # the input is a image train (like videos)
                 bsz, pn, hs = img_embeds.shape
@@ -612,21 +519,8 @@ Parameter indices which did not receive grad for rank 0: 130 131
 
     def forward(self, samples, reduction="mean"):
         # prepare the embedding to condition and the embedding to regress
-<<<<<<< HEAD
         # logger.info(samples.keys())
         # logger.info(samples['rppg'])
-=======
-
-        if 'rppg' in samples and not (samples['rppg'] == 0).all():
-            """
-            encodes rppg
-            """
-            # logger.info(f"INPUT RPPG - {samples['rppg'].shape}")
-            samples['rppg'] = self.ln_rppg(self.rppg_proj(samples['rppg']).unsqueeze(0))
-            # logger.info(f"ENCODED RPPG - {samples['rppg'].shape}")
-         
-            
->>>>>>> 7ee24512cec60775ff9cc2794956508e6d119a57
         cond_embeds, cond_atts, regress_embeds, regress_atts, part_targets = \
             self.preparing_embedding(samples)
 
@@ -700,12 +594,7 @@ Parameter indices which did not receive grad for rank 0: 130 131
             encode batches number of rppgs
             """
             rppg = rppg.flatten().unsqueeze(0).to(device=self.device,dtype=self.rppg_proj.encoder[0].weight.dtype)
-<<<<<<< HEAD
             rppgs = [self.rppg_proj.encode(rppg)]
-=======
-            rppgs = [self.ln_rppg(self.rppg_proj(rppg))]
-            logger.info(f"ENCODED RPPG - {rppgs[0].shape}")
->>>>>>> 7ee24512cec60775ff9cc2794956508e6d119a57
             # rppgs = [torch.ones(1,5,4096,dtype=torch.int8).to(self._device)]    
         
         if lengths is not None:
@@ -720,10 +609,6 @@ Parameter indices which did not receive grad for rank 0: 130 131
             """
             wrap the images, prompts and rppg by batches
             """
-<<<<<<< HEAD
-=======
-            logger.info("GENERATE METHOD WRAPPING IMAGES PROMPTS AND RPPG")
->>>>>>> 7ee24512cec60775ff9cc2794956508e6d119a57
             batch_embs = [self.get_context_emb(text, img_list,rppg) for text, img_list,rppg in zip(texts, image_lists,rppgs)]
         else:
             batch_embs = [self.get_context_emb(text, img_list) for text, img_list in zip(texts, image_lists)]
@@ -981,11 +866,7 @@ Parameter indices which did not receive grad for rank 0: 130 131
         use_grad_checkpoint_llm = cfg.get("use_grad_checkpoint_llm", False)
         max_context_len = cfg.get("max_context_len", 3800)
         remove_template = cfg.get("remove_template", False)
-<<<<<<< HEAD
         rppg_encoder_weights = cfg.get("rppg_encoder_weights",  "minigpt4/autoencoder/model_weights_RhytmFormer.pth")
-=======
-        # rppg_encoder_weights = cfg.get("rppg_encoder_weights",  "minigpt4/autoencoder/model_weights_RhytmFormer.pth")
->>>>>>> 7ee24512cec60775ff9cc2794956508e6d119a57
         device = cfg.get("device", "cuda")
 
         model = cls(
@@ -1009,11 +890,7 @@ Parameter indices which did not receive grad for rank 0: 130 131
             use_grad_checkpoint_llm=use_grad_checkpoint_llm,
             max_context_len=max_context_len,
             remove_template = remove_template,
-<<<<<<< HEAD
             rppg_encoder_weights=rppg_encoder_weights,
-=======
-            # rppg_encoder_weights=rppg_encoder_weights,
->>>>>>> 7ee24512cec60775ff9cc2794956508e6d119a57
             device=device
         )
 
@@ -1156,13 +1033,8 @@ class MiniGPT4_llama_v2_Rppg(Blip2Base):
             
             
         # self.llama_model.resize_token_embeddings(len(self.llama_tokenizer))
-<<<<<<< HEAD
         self.llama_model = prepare_model_for_int8_training(self.llama_model)
         # self.llama_model = prepare_model_for_kbit_training(self.llama_model)
-=======
-        # self.llama_model = prepare_model_for_int8_training(self.llama_model)
-        self.llama_model = prepare_model_for_kbit_training(self.llama_model)
->>>>>>> 7ee24512cec60775ff9cc2794956508e6d119a57
 
 
         loraconfig = LoraConfig(
@@ -2042,22 +1914,13 @@ class MiniGPT4_llama_v2(Blip2Base):
                 llama_model,
                 torch_dtype=torch.float16,
                 low_cpu_mem_usage=True,
-<<<<<<< HEAD
-=======
-                device_map={'':self._device}, #torch.cuda.current_device()
->>>>>>> 7ee24512cec60775ff9cc2794956508e6d119a57
             )
             
         self.llama_model = self.llama_model.to(self._device)
             
         # self.llama_model.resize_token_embeddings(len(self.llama_tokenizer))
-<<<<<<< HEAD
         self.llama_model = prepare_model_for_int8_training(self.llama_model)
         # self.llama_model = prepare_model_for_kbit_training(self.llama_model)
-=======
-        # self.llama_model = prepare_model_for_int8_training(self.llama_model)
-        self.llama_model = prepare_model_for_kbit_training(self.llama_model)
->>>>>>> 7ee24512cec60775ff9cc2794956508e6d119a57
 
 
         loraconfig = LoraConfig(
@@ -2070,11 +1933,7 @@ class MiniGPT4_llama_v2(Blip2Base):
         )
         self.llama_model = get_peft_model(self.llama_model, loraconfig)
 
-<<<<<<< HEAD
         self.llama_model.print_trainable_parameters()
-=======
-        self.llama_model.logger.info_trainable_parameters()
->>>>>>> 7ee24512cec60775ff9cc2794956508e6d119a57
 
         if self.use_grad_checkpoint_llm:
             self.llama_model.gradient_checkpointing_enable()

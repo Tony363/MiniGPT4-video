@@ -47,7 +47,6 @@ def get_arguments():
         --consistency-qa /home/tony/MiniGPT4-video/gpt_evaluation/consistency_qa_engagenet.json\
         --rppg-dir /home/tony/nvme2tb/rhythmformer_rppg/validation/validation-tensors
         
-<<<<<<< HEAD
         
     python3 inference_engagenet.py\
         --videos-dir /home/tony/engagenet_val/videos\
@@ -63,14 +62,6 @@ def get_arguments():
         --cfg-path test_configs/mistral_finetune_test_config.yaml\
         --ckpt minigpt4/training_output/engagenet/mistral/202408240305/checkpoint_9.pth\
         --num-classes 4\
-=======
-    python3 inference_engagenet.py\
-        --videos-dir /home/tony/engagenet_val/videos\
-        --cfg-path test_configs/mistral_finetune_test_config.yaml\
-        --ckpt /home/tony/MiniGPT4-video/checkpoints/video_mistral_checkpoint_best.pth\
-        --num-classes 4\
-        --gpu-id 1\
->>>>>>> 7ee24512cec60775ff9cc2794956508e6d119a57
         --label-path /home/tony/engagenet_labels/validation_engagement_labels.json\
         --consistency-qa /home/tony/MiniGPT4-video/gpt_evaluation/consistency_qa_engagenet.json
     
@@ -209,11 +200,7 @@ def main()->None:
     num_classes,max_new_tokens = args.num_classes,args.max_new_tokens
     model, vis_processor = init_model(args)
     model = model.to(config['run']['device'])
-<<<<<<< HEAD
     # model.eval()
-=======
-    model.eval()
->>>>>>> 7ee24512cec60775ff9cc2794956508e6d119a57
     
     video_paths = os.listdir(args.videos_dir)
     
@@ -232,7 +219,6 @@ def main()->None:
         
         prepared_images,q_prepared_instruction,q_prompt = prepare_conversation(vid_path,vis_processor,CONV_VISION,args.sys_instruct,args.question)
 
-<<<<<<< HEAD
         # samples = {
         #     "image":prepared_images.unsqueeze(0).to(config['run']['device']),
         #     "instruction_input":[q_prepared_instruction],
@@ -240,24 +226,11 @@ def main()->None:
         #     "num_choices":[num_classes],
         #     "length":[len(prepared_images)],
         # }
-=======
-        samples = {
-            "image":prepared_images.unsqueeze(0).to(config['run']['device']),
-            "instruction_input":[q_prepared_instruction],
-            "choices":classes,
-            "num_choices":[num_classes],
-            "length":[len(prepared_images)],
-        }
->>>>>>> 7ee24512cec60775ff9cc2794956508e6d119a57
         rppg_path = os.path.join(args.rppg_dir, f"{vid_id}_0.pt")
         logger.info(f"EXISTS - {os.path.exists(rppg_path)} {rppg_path}")
         if args.rppg_dir and os.path.exists(rppg_path):
             rppg = torch.load(rppg_path).to(config['run']['device'])
-<<<<<<< HEAD
             # samples['rppg'] = rppg
-=======
-            samples['rppg'] = rppg
->>>>>>> 7ee24512cec60775ff9cc2794956508e6d119a57
             logger.info(f"RPPG INFERENCE - {rppg is not None}")
             
             a = model.generate(
@@ -321,32 +294,18 @@ def main()->None:
                 lengths=[len(prepared_images)],
                 num_beams=1,
             )    
-<<<<<<< HEAD
         # pred_ans = model.predict_class(samples)
         # logger.info(f"{sample}: {pred_ans[0]} - {label[vid_id]}")
-=======
-        pred_ans = model.predict_class(samples)
-        logger.info(f"{sample}: {pred_ans[0]} - {label[vid_id]}")
->>>>>>> 7ee24512cec60775ff9cc2794956508e6d119a57
         
         prepared_images = prepared_images.to(config['run']['device'])
 
         
-<<<<<<< HEAD
         # pred,target = torch.tensor([mapping[pred_ans[0]]]).to(config['run']['device']),torch.tensor([mapping[label[vid_id]]]).to(config['run']['device'])
         # performance = metrics.forward(pred,target)
         # logger.info(f"ACC - {performance['MulticlassAccuracy']}")
         # logger.info(f"PR - {performance['MulticlassPrecision']}")
         # logger.info(f"RE - {performance['MulticlassRecall']}")
         # logger.info(f"F1 - {performance['MulticlassF1Score']}")
-=======
-        pred,target = torch.tensor([mapping[pred_ans[0]]]).to(config['run']['device']),torch.tensor([mapping[label[vid_id]]]).to(config['run']['device'])
-        performance = metrics.forward(pred,target)
-        logger.info(f"ACC - {performance['MulticlassAccuracy']}")
-        logger.info(f"PR - {performance['MulticlassPrecision']}")
-        logger.info(f"RE - {performance['MulticlassRecall']}")
-        logger.info(f"F1 - {performance['MulticlassF1Score']}")
->>>>>>> 7ee24512cec60775ff9cc2794956508e6d119a57
         
         pred_set:dict={
             'video_name':vid_id,
@@ -361,21 +320,12 @@ def main()->None:
         pred_samples.append(pred_set)
         rppg = None
         
-<<<<<<< HEAD
     # performance = metrics.compute()
     # logger.info(f"FINAL ACC - {performance['MulticlassAccuracy']}")
     # logger.info(f"FINAL PR - {performance['MulticlassPrecision']}")
     # logger.info(f"FINAL RE - {performance['MulticlassRecall']}")
     # logger.info(f"FINAL F1 - {performance['MulticlassF1Score']}")
     # metrics.reset()
-=======
-    performance = metrics.compute()
-    logger.info(f"FINAL ACC - {performance['MulticlassAccuracy']}")
-    logger.info(f"FINAL PR - {performance['MulticlassPrecision']}")
-    logger.info(f"FINAL RE - {performance['MulticlassRecall']}")
-    logger.info(f"FINAL F1 - {performance['MulticlassF1Score']}")
-    metrics.reset()
->>>>>>> 7ee24512cec60775ff9cc2794956508e6d119a57
     
     model_card = args.cfg_path.split(".yaml")[0].split(os.sep)[-1]
     with open(f'gpt_evaluation/{model_card}_eval.json','w') as f:
@@ -422,7 +372,6 @@ if __name__ == "__main__":
     Average score for detailed orientation: 2.1260504201680672      
     Average score for contextual understanding: 2.637721755368814
     Average score temporal understanding: 2.604108309990663         
-<<<<<<< HEAD
     Average score for consistency: 0.8141923436041083   
 
     
@@ -459,9 +408,6 @@ if __name__ == "__main__":
     Average score for contextual understanding: 3.8964102564102565
     Average score temporal understanding: 3.4728205128205127
     Average score for consistency: 3.797948717948718
-=======
-    Average score for consistency: 0.8141923436041083               
->>>>>>> 7ee24512cec60775ff9cc2794956508e6d119a57
     '''
     program = os.path.basename(__file__)
     if os.path.exists(f"logs/{os.path.splitext(program)[0]}.log"):
