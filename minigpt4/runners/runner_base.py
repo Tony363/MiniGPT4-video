@@ -471,11 +471,7 @@ class RunnerBase:
         # testing phase
         test_logs = self.evaluate(cur_epoch=cur_epoch, skip_reload=self.evaluate_only)
         with open(os.path.join(self.output_dir, f"epoch_{cur_epoch + 1}.json"), "w") as f:
-<<<<<<< HEAD
             f.write(json.dumpsd(test_logs))
-=======
-            f.write(json.dumps(test_logs))
->>>>>>> 7ee24512cec60775ff9cc2794956508e6d119a57
 
         total_time = time.time() - start_time
         total_time_str = str(datetime.timedelta(seconds=int(total_time)))

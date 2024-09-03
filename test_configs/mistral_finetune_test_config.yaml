@@ -8,11 +8,7 @@ model:
   image_size: 224
   end_sym: "</s>"
   llama_model: "mistralai/Mistral-7B-Instruct-v0.2"
-<<<<<<< HEAD
   ckpt: minigpt4/training_output/engagenet/mistral/202408272344/checkpoint_9.pth
-=======
-  ckpt: /home/tony/MiniGPT4-video/minigpt4/training_output/engagenet/mistral/202408102213/checkpoint_49.pth
->>>>>>> 7ee24512cec60775ff9cc2794956508e6d119a57
   # ckpt: "/home/tony/MiniGPT4-video/checkpoints/video_mistral_checkpoint_best.pth"
   # ckpt: "/home/tony/nvme2tb/mistral_rppg_mamba_half/202407300139/checkpoint_49.pth" 
   #"checkpoints/video_mistral_all_checkpoint_last.pth"
@@ -22,11 +18,7 @@ model:
   lora_alpha: 16
   length: 50
   use_grad_checkpoint_llm: True
-<<<<<<< HEAD
   max_context_len: 3600 #7200
-=======
-  max_context_len: 4500 #7200
->>>>>>> 7ee24512cec60775ff9cc2794956508e6d119a57
   # rppg_encoder_weights: "minigpt4/autoencoder/model_weights_RhytmFormer296.pth"
   # device: "cuda:1"
 
@@ -46,10 +38,6 @@ datasets:
 run:
   task: image_text_pretrain
   seed: 42
-<<<<<<< HEAD
   gpu: 0
-=======
-  gpu: 1
->>>>>>> 7ee24512cec60775ff9cc2794956508e6d119a57
   amp: True
   device: "cuda"

@@ -21,11 +21,7 @@ import ast
 from dotenv import load_dotenv,find_dotenv
 import os
 
-<<<<<<< HEAD
 openai.api_key_path = '/home/tony/MiniGPT4-video/.env'
-=======
-
->>>>>>> 7ee24512cec60775ff9cc2794956508e6d119a57
 
 from utils import init_logger
 import os
@@ -93,11 +89,7 @@ class BaseTask:
         return loss
 
     def valid_step(self, model, samples):
-<<<<<<< HEAD
         if 'rppg' in samples and not (samples['rppg'].shape[0] == 1):
-=======
-        if 'rppg' in samples and not (samples['rppg'] == 0):
->>>>>>> 7ee24512cec60775ff9cc2794956508e6d119a57
             answers = model.generate(
                 images=samples['image'],
                 texts=samples['instruction_input'],
@@ -105,10 +97,7 @@ class BaseTask:
                 rppg=samples['rppg'],
             )
             return answers
-<<<<<<< HEAD
         
-=======
->>>>>>> 7ee24512cec60775ff9cc2794956508e6d119a57
         answers = model.generate(
             images=samples['image'],
             texts=samples['instruction_input'],
@@ -119,19 +108,11 @@ class BaseTask:
     def before_evaluation(self, model, dataset, **kwargs):
         model.before_evaluation(dataset=dataset, task_type=type(self))
         
-<<<<<<< HEAD
     def chatgpt_eval(self,question, answer,pred):
         try:
             # Compute the correctness score
             completion = openai.chat.completions.create(
                 model="gpt-3.5-turbo",
-=======
-    def chatgpt_eval(self,client,question, answer,pred):
-        try:
-            # Compute the correctness score
-            completion = client.chat.completions.create(
-                model="gpt-4o-mini",
->>>>>>> 7ee24512cec60775ff9cc2794956508e6d119a57
                 # model='gpt-4',
                 messages=[
                     {
@@ -173,12 +154,6 @@ class BaseTask:
         yes_count=0
         no_count=0
         # Load the .env file
-<<<<<<< HEAD
-=======
-        env_path = find_dotenv('/home/tony/MiniGPT4-video/.env')
-        load_dotenv(env_path)
-        client = openai.OpenAI(api_key=os.getenv("API_KEY"))
->>>>>>> 7ee24512cec60775ff9cc2794956508e6d119a57
         for res in val_result:
             gpt_response=self.chatgpt_eval(client,res['Q'],res['A'],res['pred'])
             if gpt_response is None:
