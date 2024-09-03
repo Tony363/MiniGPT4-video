@@ -1,10 +1,18 @@
 model:
+<<<<<<< HEAD
   arch: mini_gpt4_llama_v2
+=======
+  arch: mini_gpt4_llama_v2_rppg
+>>>>>>> 7ee24512cec60775ff9cc2794956508e6d119a57
   model_type: pretrain_vicuna
   freeze_vit: True
   freeze_qformer: True
   max_txt_len: 512
+<<<<<<< HEAD
   low_resource: False
+=======
+  low_resource: True
+>>>>>>> 7ee24512cec60775ff9cc2794956508e6d119a57
   image_size: 224
   end_sym: "</s>"
   llama_model: "mistralai/Mistral-7B-Instruct-v0.2"
@@ -18,7 +26,11 @@ model:
   length: 50
   use_grad_checkpoint_llm: True
   max_context_len: 3600 #7200
+<<<<<<< HEAD
   # device: "cuda:0"
+=======
+  device: "cuda:0"
+>>>>>>> 7ee24512cec60775ff9cc2794956508e6d119a57
 
 datasets:
   engagenet_rppg: #99378 row  - 13224 video
@@ -37,4 +49,8 @@ run:
   task: image_text_pretrain
   seed: 42
   amp: True
+<<<<<<< HEAD
   device: "cuda"
+=======
+  device: "cuda:0"
+>>>>>>> 7ee24512cec60775ff9cc2794956508e6d119a57

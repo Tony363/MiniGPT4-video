@@ -1,5 +1,8 @@
+<<<<<<< HEAD
 adapter_output/*
 *.safetensors
+=======
+>>>>>>> 7ee24512cec60775ff9cc2794956508e6d119a57
 *.env
 gguf/*
 # Byte-compiled / optimized / DLL files
