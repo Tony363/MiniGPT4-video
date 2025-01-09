@@ -17,7 +17,7 @@ from minigpt4.datasets.datasets.coyo_dataset import COYOCaptionWDSDataset,COYOBo
 # , COYOBBoxPhraseDataset
 from minigpt4.datasets.datasets.grounded_detailed_image_caption_dataset import GroundedDetailDataset
 from minigpt4.datasets.datasets.reasoning_dataset import ReasoningDataset
-from minigpt4.datasets.datasets.video_datasets import CMDVideoDataset, WebVidDataset,VideoChatGPTDataset, EngageNetDataset,EngageNetRppgDataset
+from minigpt4.datasets.datasets.video_datasets import CMDVideoDataset, WebVidDataset,VideoChatGPTDataset, EngageNetDataset,EngageNetRppgDataset,DaiseeDataset
 from minigpt4.datasets.datasets.cot import CoTDataset
 from minigpt4.datasets.datasets.unnatural_instruction import UnnaturalDataset
 from minigpt4.datasets.datasets.caption_reasoning import CaptionReasonDataset
@@ -953,6 +953,45 @@ class EngageNetBuilder(BaseDatasetBuilder):
             rppg_dir=build_info.rppg_dir_val
         )
         return datasets
+
+@registry.register_builder("daisee")
+class DaiseeBuilder(BaseDatasetBuilder):
+    train_dataset_cls = DaiseeDataset # Add the dataset class here
+    val_dataset_cls = DaiseeDataset
+
+    DATASET_CONFIG_DICT = {
+        "default": "configs/datasets/daisee/default.yaml",
+    }
+    logger.info(DATASET_CONFIG_DICT)
+
+    def build_datasets(self):
+        # download, split, etc...
+        # only called on 1 GPU/TPU in distributed
+        self.build_processors()
+
+        build_info = self.config.build_info # information from the config file
+        datasets = dict()
+
+        # create datasets
+        dataset_cls = self.train_dataset_cls
+        datasets['train'] = dataset_cls(
+            vis_processor=self.vis_processors["train"], # Add the vis_processor here
+            text_processor=self.text_processors["train"], # Add the text_processor here
+            vis_root=build_info.vis_root, # Add videos path here
+            ann_paths=build_info.ann_paths, # Add annotations path here
+            subtitles_path=build_info.subtitles_path, # Add subtitles path here
+            model_name=build_info.model_name # Add model name here (llama2 or mistral)
+        )
+        datasets['eval'] = self.val_dataset_cls(
+            vis_processor=self.vis_processors["eval"], # Add the vis_processor here
+            text_processor=self.text_processors["eval"], # Add the text_processor here
+            vis_root=build_info.vis_root_val, # Add videos path here
+            ann_paths=build_info.ann_paths_val, # Add annotations path here
+            subtitles_path=build_info.subtitles_path, # Add subtitles path here
+            model_name=build_info.model_name, # Add model name here (llama2 or mistral)
+        )
+        return datasets
+
 
 @registry.register_builder("Name of the builder as in the config file")
 class VideoTemplateBuilder(BaseDatasetBuilder):

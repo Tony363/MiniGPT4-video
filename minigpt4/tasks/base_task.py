@@ -305,7 +305,7 @@ class BaseTask:
             inner_epoch = start_iters // iters_per_epoch
             header = header + "; inner epoch [{}]".format(inner_epoch)
             
-        loss = 999
+        # loss = 999
         for i in metric_logger.log_every(range(iters_per_epoch), log_freq, header):
             
             # if using iter-based runner, we stop after iters_per_epoch iterations.

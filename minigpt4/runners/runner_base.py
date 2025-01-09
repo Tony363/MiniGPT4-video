@@ -456,13 +456,12 @@ class RunnerBase:
             if not self.evaluate_only:
                 logger.info("Start training")
                 train_stats = self.train_epoch(cur_epoch)
-                logger.info(train_stats)
                 self.log_stats(split_name="train", stats=train_stats)
                 
             if not self.evaluate_only:
                 self._save_checkpoint(cur_epoch, is_best=False)
              
-            if self.evaluate_only or float(train_stats["loss"]) < 0.08:
+            if self.evaluate_only:#or float(train_stats["loss"]) < 0.08:
                 break 
 
             if self.config.run_cfg.distributed:

@@ -1,0 +1,18 @@
+ # Copyright (c) 2022, salesforce.com, inc.
+ # All rights reserved.
+ # SPDX-License-Identifier: BSD-3-Clause
+ # For full license text, see the LICENSE file in the repo root or https://opensource.org/licenses/BSD-3-Clause
+
+datasets:
+  daisee: # same as the name of the train_config yaml file
+    # data_dir: ${env.data_dir}/datasets
+    data_type: images # let it be images for now even if it is videos
+
+    build_info: # this is the information needed to build the dataset
+      # Be careful not to append minus sign (-) before split to avoid itemizing
+      ann_paths: [/home/tony/nvme2tb/DAiSEE/dataset/train/annotations/daisee_engagement_train.json] #engagenet_labels/validation_engagement_labels.json] # list of paths to annotation files
+      vis_root: /home/tony/nvme2tb/DAiSEE/dataset/train/videos
+      subtitles_path: /home/tony/
+      model_name: 'mistral' # Language Model Name (available: llama2, mistral)
+      vis_root_val: /home/tony/nvme2tb/DAiSEE/dataset/val/videos
+      ann_paths_val: [/home/tony/nvme2tb/DAiSEE/dataset/val/annotations/daisee_engagement_validation.json]
