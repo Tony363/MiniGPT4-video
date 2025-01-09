@@ -151,7 +151,7 @@ def get_test_labels(
     with open(label_path,'r') as f:
         captions = json.load(f)
         for pair in captions:
-            label[pair['video_id']] = pair['a']
+            label[pair['video_id']] = pair['QA'['a']] if 'daisee' in label_path else pair['a']
     save = open(os.path.join('/'.join(label_path.split('/')[:-1]),'eval_labels.json'),'w')
     json.dump(label,save,indent=4)
     save.close()

@@ -46,7 +46,7 @@ run:
   warmup_lr: 1e-6
 
   weight_decay: 0.05
-  max_epoch: 50
+  max_epoch: 40
   num_workers: 4
   warmup_steps: 875
   iters_per_epoch: 875
@@ -65,6 +65,6 @@ run:
 
   device: "cuda"
   # gpu: 0 # set DDP entry device
-  world_size: 2
+  world_size: 1
   dist_url: "env://"
   distributed: True

@@ -1260,7 +1260,7 @@ class DaiseeDataset(BaseDataset, __DisplMixin):
                 video_id = sub.split('.')[0]
                 self.videos_has_subtitles[video_id] = True
         self.videos_extension={}
-        for video in os.listdir(os.path.join(self.vis_root,'videos')):
+        for video in os.listdir(self.vis_root):
             self.videos_extension[video.split('.')[0]] = video.split('.')[1]
         self.transform = transforms.Compose([
                 transforms.ToPILImage(),
@@ -1272,7 +1272,7 @@ class DaiseeDataset(BaseDataset, __DisplMixin):
     
     def __getitem__(self, index):
         ann = self.annotation[index]
-        video_id = ann["video_id"] # video_id
+        video_id = ann["video_id"].replace('.avi','').replace('.mp4','') # video_id
         answer=ann['QA']["a"] # answer (ground truth)
         instruction=ann['QA']["q"] # question (instruction)
         images=[]
@@ -1283,7 +1283,7 @@ class DaiseeDataset(BaseDataset, __DisplMixin):
             # Load the VTT subtitle file
             vtt_file = webvtt.read(subtitle_path)
 
-        video_path = os.path.join(self.vis_root,'videos',f'{video_id}.{self.videos_extension[video_id]}')
+        video_path = os.path.join(self.vis_root,f'{video_id}.{self.videos_extension[video_id]}')
         clip = VideoFileClip(video_path)
         total_num_frames = int(clip.duration * clip.fps)
         clip.close()
