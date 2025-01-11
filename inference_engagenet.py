@@ -66,7 +66,7 @@ def get_arguments():
         --consistency-qa /home/tony/MiniGPT4-video/gpt_evaluation/consistency_qa_engagenet.json
     
     python3 inference_engagenet.py\
-        --videos-dir /home/tony/engagenet_val/videos\
+        --videos-dir /home/tony/nvme2tb/DAiSEE/dataset/test/videos\
         --cfg-path test_configs/llama2_test_config.yaml\
         --ckpt /home/tony/MiniGPT4-video/checkpoints/video_llama_checkpoint_best.pth\
         --num-classes 4\
@@ -74,6 +74,14 @@ def get_arguments():
         --label-path /home/tony/engagenet_labels/validation_engagement_labels.json\
         --consistency-qa /home/tony/MiniGPT4-video/gpt_evaluation/consistency_qa_engagenet.json
         --rppg-dir /home/tony/engagenet_val/rppg_mamba/tensors
+
+    python3 inference_engagenet.py\
+        --videos-dir /home/tony/engagenet_val/videos\
+        --cfg-path test_configs/mistral_finetune_test_config.yaml\
+        --ckpt minigpt4/training_output/engagenet/mistral/202408240305/checkpoint_9.pth\
+        --num-classes 4\
+        --label-path /home/tony/engagenet_labels/validation_engagement_labels.json\
+        --consistency-qa /home/tony/MiniGPT4-video/gpt_evaluation/consistency_qa_engagenet.json
 
     """
     parser = argparse.ArgumentParser(description="Inference parameters")
@@ -135,27 +143,24 @@ def get_arguments():
 def get_test_labels(
     label_path:str
 )->dict:
-    label = {}
-    classes = np.array([
-        ['The student is Not-Engaged.'],
-        ['The student is Barely-engaged.'],
-        ['The student is Engaged.'],
-        ['The student is Highly-Engaged.']
-    ])
-    mapping = {
-        'The student is Not-Engaged.':0,
-        'The student is Barely-engaged.':1,
-        'The student is Engaged.':2,
-        'The student is Highly-Engaged.':3
+    # mapping = {
+    #     'The student is Not-Engaged.':0,
+    #     'The student is Barely-engaged.':1,
+    #     'The student is Engaged.':2,
+    #     'The student is Highly-Engaged.':3
+    # }
+    mappping = {
+        "The person's level of engagement is very low.":0,
+        "The person's level of engagement is low.":1,
+        "The person's level of engagement is high.":2,
+        "The person's level of engagement is very high.":3
     }
     with open(label_path,'r') as f:
-        captions = json.load(f)
-        for pair in captions:
-            label[pair['video_id']] = pair['QA'['a']] if 'daisee' in label_path else pair['a']
+        label = json.load(f)
     save = open(os.path.join('/'.join(label_path.split('/')[:-1]),'eval_labels.json'),'w')
     json.dump(label,save,indent=4)
     save.close()
-    return label,classes,mapping
+    return label,mapping
 
 def load_metrics(num_classes:int)->torchmetrics.MetricCollection:
     metrics = torchmetrics.MetricCollection([
@@ -167,7 +172,7 @@ def load_metrics(num_classes:int)->torchmetrics.MetricCollection:
     return metrics
 
 def prepare_conversation(
-    vid_path:str,
+    subject:str,
     vis_processor:object,
     conv:CONV_VISION,
     sys_instruct:str,
@@ -176,7 +181,7 @@ def prepare_conversation(
     conv = CONV_VISION.copy()
     conv.system = sys_instruct
     
-    prepared_images,prepared_instruction = prepare_input(vis_processor,vid_path,None,question)
+    prepared_images,prepared_instruction = prepare_input(vis_processor,subject,None,question)
     conv.append_message(conv.roles[0], prepared_instruction)
     conv.append_message(conv.roles[1], None)
     q = [conv.get_prompt()]
@@ -200,37 +205,30 @@ def main()->None:
     num_classes,max_new_tokens = args.num_classes,args.max_new_tokens
     model, vis_processor = init_model(args)
     model = model.to(config['run']['device'])
-    # model.eval()
+    model.eval()
     
     video_paths = os.listdir(args.videos_dir)
-    
-    metrics = load_metrics(args.num_classes)
-    metrics.to(config['run']['device'])
+    metrics = load_metrics(args.num_classes).to(config['run']['device'])
+
+    inference_samples = len(label)
+    pred_table,target_table = torch.zeros(inference_samples).to(config['run']['device']),torch.zeros(inference_samples).to(config['run']['device'])
     
     pred_samples = []
     rppg = None
-    for sample,vid_path in enumerate(tqdm(video_paths)):
-        if not ".mp4" in vid_path:
-            continue
-        
-        vid_id = vid_path.split(".mp4")[0]
-        vid_path = os.path.join(args.videos_dir, vid_path)
+    for i,subject in enumerate(tqdm(label)):
+        vid_id = subject.split(".mp4")[0]
+        video_path = os.path.join(args.videos_dir, vid_id)
         logger.info("Processing video - {}".format(vid_id))
-        
-        prepared_images,q_prepared_instruction,q_prompt = prepare_conversation(vid_path,vis_processor,CONV_VISION,args.sys_instruct,args.question)
 
-        # samples = {
-        #     "image":prepared_images.unsqueeze(0).to(config['run']['device']),
-        #     "instruction_input":[q_prepared_instruction],
-        #     "choices":classes,
-        #     "num_choices":[num_classes],
-        #     "length":[len(prepared_images)],
-        # }
+        target_table[i] = mapping[subject['QA']['a']]
+        pred_table[i] = target_table[i]
+
+        prepared_images,q_prepared_instruction,q_prompt = prepare_conversation(video_path,vis_processor,CONV_VISION,args.sys_instruct,args.question)
+
         rppg_path = os.path.join(args.rppg_dir, f"{vid_id}_0.pt")
         logger.info(f"EXISTS - {os.path.exists(rppg_path)} {rppg_path}")
         if args.rppg_dir and os.path.exists(rppg_path):
             rppg = torch.load(rppg_path).to(config['run']['device'])
-            # samples['rppg'] = rppg
             logger.info(f"RPPG INFERENCE - {rppg is not None}")
             
             a = model.generate(
@@ -244,7 +242,7 @@ def main()->None:
             ) 
             
             q1,q2 = qa_pairs[vid_id]['Q1'],qa_pairs[vid_id]['Q2']
-            _,q1_prepared_instruction,q1_prompt = prepare_conversation(vid_path,vis_processor,CONV_VISION,args.sys_instruct,q1)
+            _,q1_prepared_instruction,q1_prompt = prepare_conversation(subject,vis_processor,CONV_VISION,args.sys_instruct,q1)
             a1 = model.generate(
                 prepared_images, 
                 q1_prompt, 
@@ -254,7 +252,7 @@ def main()->None:
                 num_beams=1,
                 rppg=rppg
             ) 
-            _,q2_prepared_instruction,q2_prompt = prepare_conversation(vid_path,vis_processor,CONV_VISION,args.sys_instruct,q2)
+            _,q2_prepared_instruction,q2_prompt = prepare_conversation(subject,vis_processor,CONV_VISION,args.sys_instruct,q2)
             a2 = model.generate(
                 prepared_images, 
                 q2_prompt, 
@@ -276,7 +274,7 @@ def main()->None:
             ) 
             
             q1,q2 = qa_pairs[vid_id]['Q1'],qa_pairs[vid_id]['Q2']
-            _,q1_prepared_instruction,q1_prompt = prepare_conversation(vid_path,vis_processor,CONV_VISION,args.sys_instruct,q1)
+            _,q1_prepared_instruction,q1_prompt = prepare_conversation(subject,vis_processor,CONV_VISION,args.sys_instruct,q1)
             a1 = model.generate(
                 prepared_images, 
                 q1_prompt, 
@@ -285,7 +283,7 @@ def main()->None:
                 lengths=[len(prepared_images)],
                 num_beams=1,
             ) 
-            _,q2_prepared_instruction,q2_prompt = prepare_conversation(vid_path,vis_processor,CONV_VISION,args.sys_instruct,q2)
+            _,q2_prepared_instruction,q2_prompt = prepare_conversation(subject,vis_processor,CONV_VISION,args.sys_instruct,q2)
             a2 = model.generate(
                 prepared_images, 
                 q2_prompt, 
@@ -297,22 +295,20 @@ def main()->None:
         # pred_ans = model.predict_class(samples)
         # logger.info(f"{sample}: {pred_ans[0]} - {label[vid_id]}")
         
-        prepared_images = prepared_images.to(config['run']['device'])
+        # prepared_images = prepared_images.to(config['run']['device'])
 
+        performance = metrics.forward(pred_table[:i + 1],target_table[:i + 1])
+        logger.info(f"ACC - {performance['MulticlassAccuracy']}")
+        logger.info(f"PR - {performance['MulticlassPrecision']}")
+        logger.info(f"RE - {performance['MulticlassRecall']}")
+        logger.info(f"F1 - {performance['MulticlassF1Score']}")
         
-        # pred,target = torch.tensor([mapping[pred_ans[0]]]).to(config['run']['device']),torch.tensor([mapping[label[vid_id]]]).to(config['run']['device'])
-        # performance = metrics.forward(pred,target)
-        # logger.info(f"ACC - {performance['MulticlassAccuracy']}")
-        # logger.info(f"PR - {performance['MulticlassPrecision']}")
-        # logger.info(f"RE - {performance['MulticlassRecall']}")
-        # logger.info(f"F1 - {performance['MulticlassF1Score']}")
-        
-        pred_set:dict={
+        pred_set = {
             'video_name':vid_id,
             'Q':args.question,
             'Q1':q1,
             'Q2':q2,
-            'A':label[vid_id],
+            'A':subject['QA']['a'],
             'pred':a,
             'pred1':a1,
             'pred2':a2
@@ -320,12 +316,12 @@ def main()->None:
         pred_samples.append(pred_set)
         rppg = None
         
-    # performance = metrics.compute()
-    # logger.info(f"FINAL ACC - {performance['MulticlassAccuracy']}")
-    # logger.info(f"FINAL PR - {performance['MulticlassPrecision']}")
-    # logger.info(f"FINAL RE - {performance['MulticlassRecall']}")
-    # logger.info(f"FINAL F1 - {performance['MulticlassF1Score']}")
-    # metrics.reset()
+    performance = metrics.compute()
+    logger.info(f"FINAL ACC - {performance['MulticlassAccuracy']}")
+    logger.info(f"FINAL PR - {performance['MulticlassPrecision']}")
+    logger.info(f"FINAL RE - {performance['MulticlassRecall']}")
+    logger.info(f"FINAL F1 - {performance['MulticlassF1Score']}")
+    metrics.reset()
     
     model_card = args.cfg_path.split(".yaml")[0].split(os.sep)[-1]
     with open(f'gpt_evaluation/{model_card}_eval.json','w') as f:
