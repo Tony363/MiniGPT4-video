@@ -199,7 +199,7 @@ def main()->None:
         
     setup_seeds(config['run']['seed'])
     logger.info("SEED - {}".format(config['run']['seed']))
-    label,classes,mapping = get_test_labels(
+    label,mapping = get_test_labels(
         label_path=args.label_path
     )
     num_classes,max_new_tokens = args.num_classes,args.max_new_tokens

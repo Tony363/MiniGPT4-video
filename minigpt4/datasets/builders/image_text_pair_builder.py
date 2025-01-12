@@ -980,7 +980,9 @@ class DaiseeBuilder(BaseDatasetBuilder):
             vis_root=build_info.vis_root, # Add videos path here
             ann_paths=build_info.ann_paths, # Add annotations path here
             subtitles_path=build_info.subtitles_path, # Add subtitles path here
-            model_name=build_info.model_name # Add model name here (llama2 or mistral)
+            model_name=build_info.model_name, # Add model name here (llama2 or mistral)
+            question_prompts=build_info.questions_path,
+            instruct_prompts=build_info.instruction_prompts
         )
         datasets['eval'] = self.val_dataset_cls(
             vis_processor=self.vis_processors["eval"], # Add the vis_processor here
@@ -989,6 +991,8 @@ class DaiseeBuilder(BaseDatasetBuilder):
             ann_paths=build_info.ann_paths_val, # Add annotations path here
             subtitles_path=build_info.subtitles_path, # Add subtitles path here
             model_name=build_info.model_name, # Add model name here (llama2 or mistral)
+            question_prompts=build_info.questions_path,
+            instruct_prompts=build_info.instruction_prompts
         )
         return datasets
 
