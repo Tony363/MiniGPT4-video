@@ -2,6 +2,8 @@ import yaml
 import json
 import argparse
 import os
+import re
+import random
 import numpy as np
 import torch
 import torchmetrics
@@ -19,15 +21,14 @@ from utils import init_logger
 
 def get_arguments():
     """
-    
-    python3 inference_engagenet.py\
+    python3 inference_daisee.py\
         --videos-dir /home/tony/nvme2tb/DAiSEE/dataset/test/videos\
-        --cfg-path test_configs/llama2_test_config.yaml\
-        --ckpt /home/tony/MiniGPT4-video/checkpoints/video_llama_checkpoint_best.pth\
+        --cfg-path test_configs/mistral_daisee_test_config.yaml\
+        --ckpt /home/tony/MiniGPT4-video/minigpt4/training_output/engagenet/mistral_daisee/202501112032/checkpoint_7.pth\
         --num-classes 4\
         --gpu-id 0\
-        --label-path /home/tony/engagenet_labels/validation_engagement_labels.json\
-        --consistency-qa /home/tony/MiniGPT4-video/gpt_evaluation/consistency_qa_engagenet.json
+        --label-path /home/tony/MiniGPT4-video/daisee_captions/test_filter_cap.json
+        --question-prompts /home/tony/MiniGPT4-video/prompts/daisee_questions.txt
 
     """
     parser = argparse.ArgumentParser(description="Inference parameters")
@@ -41,7 +42,7 @@ def get_arguments():
     parser.add_argument(
         "--label-path", 
         type=str, 
-        default='/home/tony/engagenet_labels/validation_engagement_labels.json',
+        default='/home/tony/MiniGPT4-video/daisee_captions/test_filter_cap.json',
         help="path to EngageNet Labels"
     )
 
@@ -53,17 +54,18 @@ def get_arguments():
                 "change to --cfg-options instead.",
     )
     parser.add_argument(
-        '-consistency-qa','--consistency-qa', 
+        '-question-prompts','--question_prompts', 
         type=str,
-        default='consistency-qa.json',
-        help='json of qa pairs', 
-        required=True
+        default='prompts/daisee_questions.txt',
+        help='questions for consistency check', 
+        required=False
     )
     parser.add_argument(
-        "--eval_prompts", 
+        "--eval-prompts", 
         type=str, 
         default='prompts/instruction_align.txt', 
-        help="text file of instruction prompts"
+        help="text file of instruction prompts",
+        required=False
     )
     parser.add_argument("--gpu-id", type=int, default=0, help="specify the gpu to load the model.")
 
@@ -73,18 +75,16 @@ def get_test_labels(
     label_path:str
 )->dict:
     mapping = {
-        'The student is Not-Engaged.':0,
-        'The student is Barely-engaged.':1,
-        'The student is Engaged.':2,
-        'The student is Highly-Engaged.':3
+        'The student is Not-Engaged':0,
+        'The student is Barely-Engaged':1,
+        'The student is Engaged':2,
+        'The student is Highly-Engaged':3
     }
 
     with open(label_path,'r') as f:
         label = json.load(f)
-    save = open(os.path.join('/'.join(label_path.split('/')[:-1]),'eval_labels.json'),'w')
-    json.dump(label,save,indent=4)
-    save.close()
-    return label,mapping
+
+    return label['annotations'],mapping
 
 def load_metrics(num_classes:int)->torchmetrics.MetricCollection:
     metrics = torchmetrics.MetricCollection([
@@ -111,6 +111,17 @@ def prepare_conversation(
     q = [conv.get_prompt()]
     return prepared_images,prepared_instruction,q
 
+def check_string_in_output(
+    output:str, 
+    search_string:str
+)->bool:
+    # Escape special characters in search_string if necessary
+    output,search = re.sub(r'\W', '', output).lower(),re.sub(r'\W', '', search_string).lower()
+    pattern = re.escape(search)
+    match = re.search(pattern, output)
+    return bool(match)
+
+
 def main()->None:
     logger.info("Starting Inference")
     args = get_arguments()
@@ -120,8 +131,9 @@ def main()->None:
     instruction_pool = prompt.split('\n\n')
     
     question = "Question: What is the student's engagement level?"
-    with open(args.consistency_qa,'r') as f:
-        qa_pairs = json.load(f)
+    with open(args.question_prompts,'r') as f:
+        questions = f.read().split('\n')
+        questions.remove(question)
 
     with open(args.cfg_path) as file:
         config = yaml.load(file, Loader=yaml.FullLoader)
@@ -137,6 +149,10 @@ def main()->None:
     model.eval()
     
     video_paths = os.listdir(args.videos_dir)
+    vidid_filemap = {
+        file.split('.')[0]:file 
+        for file in video_paths
+    }
     metrics = load_metrics(args.num_classes).to(config['run']['device'])
 
     inference_samples = len(label)
@@ -144,16 +160,18 @@ def main()->None:
     
     pred_samples = []
     for i,subject in enumerate(tqdm(label)):
-        vid_id = subject.split(".mp4")[0]
+        vid_id = vidid_filemap[subject['video_id']]
         video_path = os.path.join(args.videos_dir, vid_id)
-        logger.info("Processing video - {}".format(vid_path))
+        logger.info("Processing video - {}".format(video_path))
 
         target_table[i] = mapping[subject['caption']]
         pred_table[i] = target_table[i]
+
         instruction = random.choice(instruction_pool)
-        questions = qa_pairs[vid_id]['Q1'],qa_pairs[vid_id]['Q2']
+        q2 = random.choice(questions)
 
         prepared_images,q_prepared_instruction,q_prompt = prepare_conversation(video_path,vis_processor,CONV_VISION,instruction,question)
+
         a = model.generate(
             prepared_images, 
             q_prompt, 
@@ -162,10 +180,12 @@ def main()->None:
             lengths=[len(prepared_images)],
             num_beams=1,
         ) 
-        if subject['caption'].split(' ')[-1].lower not in a.lower():
+        logger.info(f"PRED - {a[0]}")
+        logger.info(f"CAPTION - {subject['caption'].split(' ')[-1]}")
+        if not check_string_in_output(a[0],subject['caption'].split(' ')[-1]): # and subject['caption'].split(' ')[-1].lower not in a.lower():
             pred_table[i] = (target_table[i] - 1) % args.num_classes
 
-        _,q1_prepared_instruction,q1_prompt = prepare_conversation(subject,vis_processor,CONV_VISION,instruction,random.choice(questions))
+        _,q1_prepared_instruction,q1_prompt = prepare_conversation(video_path,vis_processor,CONV_VISION,instruction,q2)
         a1 = model.generate(
             prepared_images, 
             q1_prompt, 
@@ -183,13 +203,13 @@ def main()->None:
         
         pred_set = {
             'video_name':vid_id,
-            'Q':args.question,
-            'Q1':q1,
+            'Q':question,
+            'Q1':question,
             'Q2':q2,
-            'A':subject['QA']['a'],
+            'A':subject['caption'],
             'pred':a,
-            'pred1':a1,
-            'pred2':a2
+            'pred1':a,
+            'pred2':a1
         }
         pred_samples.append(pred_set)
         
