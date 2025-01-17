@@ -880,7 +880,7 @@ class EngageNetBuilder(BaseDatasetBuilder):
     val_dataset_cls = EngageNetDataset
 
     DATASET_CONFIG_DICT = {
-        "default": "configs/datasets/engagenet/default.yaml",
+        "default": "/home/tony/MiniGPT4-video/minigpt4/configs/datasets/engagenet/default.yaml",
     }
     logger.info(DATASET_CONFIG_DICT)
 
@@ -888,10 +888,9 @@ class EngageNetBuilder(BaseDatasetBuilder):
         # download, split, etc...
         # only called on 1 GPU/TPU in distributed
         self.build_processors()
-
+        
         build_info = self.config.build_info # information from the config file
         datasets = dict()
-
         # create datasets
         dataset_cls = self.train_dataset_cls
         datasets['train'] = dataset_cls(
@@ -900,16 +899,20 @@ class EngageNetBuilder(BaseDatasetBuilder):
             vis_root=build_info.vis_root, # Add videos path here
             ann_paths=build_info.ann_paths, # Add annotations path here
             subtitles_path=build_info.subtitles_path, # Add subtitles path here
-            model_name=build_info.model_name # Add model name here (llama2 or mistral)
-        )
-        datasets['eval'] = self.val_dataset_cls(
-            vis_processor=self.vis_processors["eval"], # Add the vis_processor here
-            text_processor=self.text_processors["eval"], # Add the text_processor here
-            vis_root=build_info.vis_root_val, # Add videos path here
-            ann_paths=build_info.ann_paths_val, # Add annotations path here
-            subtitles_path=build_info.subtitles_path, # Add subtitles path here
             model_name=build_info.model_name, # Add model name here (llama2 or mistral)
+            question_prompts=build_info.questions_path,
+            instruct_prompts=build_info.instruction_prompts
         )
+        # datasets['eval'] = self.val_dataset_cls(
+        #     vis_processor=self.vis_processors["eval"], # Add the vis_processor here
+        #     text_processor=self.text_processors["eval"], # Add the text_processor here
+        #     vis_root=build_info.vis_root_val, # Add videos path here
+        #     ann_paths=build_info.ann_paths_val, # Add annotations path here
+        #     subtitles_path=build_info.subtitles_path, # Add subtitles path here
+        #     model_name=build_info.model_name, # Add model name here (llama2 or mistral)
+        #     question_prompts=build_info.questions_path,
+        #     instruct_prompts=build_info.instruction_prompts
+        # )
         return datasets
     
     

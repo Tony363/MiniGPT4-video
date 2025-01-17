@@ -10,9 +10,11 @@ datasets:
 
     build_info: # this is the information needed to build the dataset
       # Be careful not to append minus sign (-) before split to avoid itemizing
-      ann_paths: [/home/tony/engagenet_labels/train_engagement_labels.json] #engagenet_labels/validation_engagement_labels.json] # list of paths to annotation files
-      vis_root: /home/tony/engagenet_train/
+      ann_paths: [/home/tony/nvme2tb/engagenet_labels/train_engagement_labels.json] #engagenet_labels/validation_engagement_labels.json] # list of paths to annotation files
+      vis_root: /home/tony/nvme2tb/Train/
       subtitles_path: /home/tony/
       model_name: 'mistral' # Language Model Name (available: llama2, mistral)
-      vis_root_val: /home/tony/engagenet_val/
-      ann_paths_val: [/home/tony/engagenet_labels/validation_engagement_labels.json]
+      # vis_root_val: /home/tony/nvme2tb/Validation
+      # ann_paths_val: [/home/tony/nvme2tb/engagenet_labels/validation_engagement_labels.json]
+      questions_path: /home/tony/MiniGPT4-video/prompts/daisee_questions.txt
+      instruction_prompts: /home/tony/MiniGPT4-video/prompts/instruction_align.txt

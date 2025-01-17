@@ -39,6 +39,15 @@ def get_arguments():
         --label-path /home/tony/MiniGPT4-video/daisee_captions/test_filter_cap.json
         --question-prompts /home/tony/MiniGPT4-video/prompts/daisee_questions.txt
 
+    python3 inference_daisee.py\
+        --videos-dir /home/tony/nvme2tb/EngageNet/Test/videos\
+        --cfg-path test_configs/mistral_engagenet_base_config.yaml\
+        --ckpt checkpoints/video_mistral_checkpoint_best.pth\
+        --num-classes 4\
+        --gpu-id 0\
+        --label-path /home/tony/MiniGPT-4/engagenet_captions/test_filter_cap.json
+
+
     """
     parser = argparse.ArgumentParser(description="Inference parameters")
     parser.add_argument("--cfg-path", help="path to configuration file.",default="test_configs/llama2_test_config.yaml")
@@ -83,13 +92,18 @@ def get_arguments():
 def get_test_labels(
     label_path:str
 )->dict:
+    # mapping = {
+    #     'The student is Not-Engaged':0,
+    #     'The student is Barely-Engaged':1,
+    #     'The student is Engaged':2,
+    #     'The student is Highly-Engaged':3
+    # }
     mapping = {
-        'The student is Not-Engaged':0,
-        'The student is Barely-Engaged':1,
-        'The student is Engaged':2,
-        'The student is Highly-Engaged':3
+        'The student is not-engaged':0,
+        'The student is barely-engaged':1,
+        'The student is engaged':2,
+        'The student is highly-engaged':3
     }
-
     with open(label_path,'r') as f:
         label = json.load(f)
 
@@ -236,18 +250,43 @@ def main()->None:
 
 if __name__ == "__main__":
     '''
-    MiniGPT4-Video - key word
+    MiniGPT4-Video - daisee Finetune
     [inference_daisee.py | INFO | 2025-01-14] FINAL ACC - 0.7163130640983582
     [inference_daisee.py | INFO | 2025-01-14] FINAL PR - 0.44986313581466675
     [inference_daisee.py | INFO | 2025-01-14] FINAL RE - 0.37715649604797363
     [inference_daisee.py | INFO | 2025-01-14] FINAL F1 - 0.3880458474159241
 
-    MiniGPT4-Video - VideoChatGPT benchmark evaluation
     Average score for correctness: 4.082399103139013
     Average score for detailed orientation: 3.6541479820627805
     Average score for contextual understanding: 3.951793721973094
     Average score temporal understanding: 3.7954035874439462
     Average score for consistency: 2.8542600896860986
+
+
+    MiniGPT4-Video - daisee Base
+    INFO:inference_daisee.py:FINAL ACC - 0.5688818097114563
+    INFO:inference_daisee.py:FINAL PR - 0.4028744101524353
+    INFO:inference_daisee.py:FINAL RE - 0.28821173310279846
+    INFO:inference_daisee.py:FINAL F1 - 0.3005830943584442
+
+    /home/tony/MiniGPT4-video/gpt_evaluation/mistral_daisee_base_config_eval.json 1784
+    Average score for correctness: 3.374439461883408
+    Average score for detailed orientation: 3.0812780269058297
+    Average score for contextual understanding: 3.3323991031390134
+    Average score temporal understanding: 3.0291479820627805
+    Average score for consistency: 2.258408071748879
+
+    MiniGPT4-Video - Engagenet base
+    INFO:inference_daisee.py:FINAL ACC - 0.35479679703712463
+    INFO:inference_daisee.py:FINAL PR - 0.24729931354522705
+    INFO:inference_daisee.py:FINAL RE - 0.2997397482395172
+    INFO:inference_daisee.py:FINAL F1 - 0.2471315562725067
+
+    Average score for correctness: 3.2681388012618298
+    Average score for detailed orientation: 3.0546792849631967
+    Average score for contextual understanding: 3.2323869610935856
+    Average score temporal understanding: 2.843322818086225
+    Average score for consistency: 2.2018927444794953
     '''
     program = os.path.basename(__file__)
     if os.path.exists(f"logs/{os.path.splitext(program)[0]}.log"):

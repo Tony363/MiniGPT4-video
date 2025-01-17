@@ -991,7 +991,9 @@ class EngageNetDataset(BaseDataset, __DisplMixin):
         ann_paths,
         subtitles_path,
         model_name='llama2',
-        add_subtitles=True
+        add_subtitles=True,
+        question_prompts=None,
+        instruct_prompts=None
     ):
         """
         vis_root (string): Root directory of images (e.g. coco/images/)
@@ -1017,7 +1019,14 @@ class EngageNetDataset(BaseDataset, __DisplMixin):
             self.videos_extension[video.split('.')[0]] = video.split('.')[1]
         self.transform = transforms.Compose([
                 transforms.ToPILImage(),
-            ])
+        ])
+        if question_prompts is not None:
+            with open(question_prompts, 'r', encoding='utf-8') as file:
+                self.questions = file.readlines()
+            
+        if instruct_prompts is not None:
+            with open(instruct_prompts, 'r', encoding='utf-8') as file:
+                self.instruction_pool = file.read().split('\n\n')
         
         
     def __len__(self):
@@ -1027,7 +1036,7 @@ class EngageNetDataset(BaseDataset, __DisplMixin):
         ann = self.annotation[index]
         video_id = ann["video_id"] # video_id
         answer=ann["a"] # answer (ground truth)
-        instruction=ann["q"] # question (instruction)
+        instruction=random.choice(self.instruction_pool) + random.choice(self.questions)#ann["q"] # question (instruction)
         images=[]
         img_placeholder = ""
         has_subtitles = self.videos_has_subtitles.get(video_id, False)
