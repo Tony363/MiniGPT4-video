@@ -24,7 +24,16 @@ def get_arguments():
     python3 inference_daisee.py\
         --videos-dir /home/tony/nvme2tb/DAiSEE/dataset/test/videos\
         --cfg-path test_configs/mistral_daisee_test_config.yaml\
-        --ckpt /home/tony/MiniGPT4-video/minigpt4/training_output/engagenet/mistral_daisee/202501112032/checkpoint_7.pth\
+        --ckpt minigpt4/training_output/engagenet/mistral_daisee/202501091440/checkpoint_8.pth\
+        --num-classes 4\
+        --gpu-id 0\
+        --label-path /home/tony/MiniGPT4-video/daisee_captions/test_filter_cap.json
+        --question-prompts /home/tony/MiniGPT4-video/prompts/daisee_questions.txt
+
+    python3 inference_daisee.py\
+        --videos-dir /home/tony/nvme2tb/DAiSEE/dataset/test/videos\
+        --cfg-path test_configs/mistral_daisee_base_config.yaml\
+        --ckpt checkpoints/video_mistral_checkpoint_best.pth\
         --num-classes 4\
         --gpu-id 0\
         --label-path /home/tony/MiniGPT4-video/daisee_captions/test_filter_cap.json

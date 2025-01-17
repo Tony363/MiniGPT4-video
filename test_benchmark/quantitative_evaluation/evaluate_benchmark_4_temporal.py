@@ -24,9 +24,9 @@ def annotate(prediction_set, caption_files, output_dir):
     Evaluates question and answer pairs using GPT-3 and
     returns a score for temporal understanding.
     """
-    env_path = find_dotenv('/home/tony/MiniGPT4-video/.env')
-    load_dotenv(env_path)
-    client = openai.OpenAI(api_key=os.getenv("API_KEY"))
+    # env_path = find_dotenv('/home/tony/MiniGPT4-video/.env')
+    # load_dotenv(env_path)
+    # client = openai.OpenAI(api_key=os.getenv("API_KEY"))
     for file in caption_files:
         key = file[:-5] # Strip file extension
         qa_set = prediction_set[key]
@@ -35,7 +35,7 @@ def annotate(prediction_set, caption_files, output_dir):
         pred = qa_set['pred']
         try:
             # Compute the temporal understanding score
-            completion = client.chat.completions.create(
+            completion = openai.ChatCompletion.create(
                 model="gpt-3.5-turbo",
                 messages=[
                     {

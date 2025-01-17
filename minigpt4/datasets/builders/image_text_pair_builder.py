@@ -996,7 +996,6 @@ class DaiseeBuilder(BaseDatasetBuilder):
         )
         return datasets
 
-
 @registry.register_builder("Name of the builder as in the config file")
 class VideoTemplateBuilder(BaseDatasetBuilder):
     train_dataset_cls = ... # Add the dataset class here
