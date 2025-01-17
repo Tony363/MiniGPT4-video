@@ -3,9 +3,10 @@
 echo $OPENAI_API_KEY
 
 # Define common arguments for all scripts
-PRED_GENERIC="/home/tony/MiniGPT4-video/gpt_evaluation/mistral_daisee_test_config_eval.json"
-OUTPUT_DIR="/home/tony/MiniGPT4-video/gpt_evaluation/mistral_daisee_test_config_eval"
-
+# PRED_GENERIC="/home/tony/MiniGPT4-video/gpt_evaluation/mistral_daisee_test_config_eval.json"
+# OUTPUT_DIR="/home/tony/MiniGPT4-video/gpt_evaluation/mistral_daisee_test_config_eval"
+PRED_GENERIC='/home/tony/MiniGPT4-video/gpt_evaluation/mistral_test_config_eval.json'
+OUTPUT_DIR='/home/tony/MiniGPT4-video/gpt_evaluation/mistral_test_config_eval'
 NUM_TASKS=14
 
 # Run the "correctness" evaluation script

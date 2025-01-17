@@ -236,6 +236,18 @@ def main()->None:
 
 if __name__ == "__main__":
     '''
+    MiniGPT4-Video - key word
+    [inference_daisee.py | INFO | 2025-01-14] FINAL ACC - 0.7163130640983582
+    [inference_daisee.py | INFO | 2025-01-14] FINAL PR - 0.44986313581466675
+    [inference_daisee.py | INFO | 2025-01-14] FINAL RE - 0.37715649604797363
+    [inference_daisee.py | INFO | 2025-01-14] FINAL F1 - 0.3880458474159241
+
+    MiniGPT4-Video - VideoChatGPT benchmark evaluation
+    Average score for correctness: 4.082399103139013
+    Average score for detailed orientation: 3.6541479820627805
+    Average score for contextual understanding: 3.951793721973094
+    Average score temporal understanding: 3.7954035874439462
+    Average score for consistency: 2.8542600896860986
     '''
     program = os.path.basename(__file__)
     if os.path.exists(f"logs/{os.path.splitext(program)[0]}.log"):
