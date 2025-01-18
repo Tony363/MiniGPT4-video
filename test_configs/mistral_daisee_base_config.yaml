@@ -9,7 +9,6 @@ model:
   end_sym: "</s>"
   llama_model: "mistralai/Mistral-7B-Instruct-v0.2"
   ckpt: "checkpoints/video_mistral_checkpoint_best.pth"
-  # ckpt: "/home/tony/nvme2tb/mistral_rppg_mamba_half/202407300139/checkpoint_49.pth" 
   
   #"checkpoints/video_mistral_all_checkpoint_last.pth"
   use_grad_checkpoint: True

@@ -14,7 +14,7 @@ datasets:
       vis_root: /home/tony/nvme2tb/Train/
       subtitles_path: /home/tony/
       model_name: 'mistral' # Language Model Name (available: llama2, mistral)
-      # vis_root_val: /home/tony/nvme2tb/Validation
-      # ann_paths_val: [/home/tony/nvme2tb/engagenet_labels/validation_engagement_labels.json]
+      vis_root_val: /home/tony/nvme2tb/Validation
+      ann_paths_val: [/home/tony/nvme2tb/engagenet_labels/validation_engagement_labels.json]
       questions_path: /home/tony/MiniGPT4-video/prompts/daisee_questions.txt
       instruction_prompts: /home/tony/MiniGPT4-video/prompts/instruction_align.txt

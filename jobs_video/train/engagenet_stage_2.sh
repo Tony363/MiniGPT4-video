@@ -17,8 +17,8 @@ cfg_path="train_configs/224_v2_mistral_engagenet_instruct.yaml"
 # cfg_path="train_configs/224_v2_llama2_engagenet_stage_2.yaml" 
 # cfg_path="train_configs/224_v2_llama2_rppg_engagenet_stage_2.yaml" 
 number_of_gpus=1 # number of gpus
-TORCH_DISTRIBUTED_DEBUG=DETAIL  # Add detailed distributed debugging
-NCCL_DEBUG=INFO  # Add NCCL debugging information
+# TORCH_DISTRIBUTED_DEBUG=DETAIL  # Add detailed distributed debugging
+# NCCL_DEBUG=INFO  # Add NCCL debugging information
 
 
 read LOWERPORT UPPERPORT < /proc/sys/net/ipv4/ip_local_port_range
