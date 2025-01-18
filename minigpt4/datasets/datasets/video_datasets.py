@@ -1015,7 +1015,7 @@ class EngageNetDataset(BaseDataset, __DisplMixin):
                 video_id = sub.split('.')[0]
                 self.videos_has_subtitles[video_id] = True
         self.videos_extension={}
-        for video in os.listdir(os.path.join(self.vis_root,'videos')):
+        for video in os.listdir(os.path.join(self.vis_root,'original_videos')):
             self.videos_extension[video.split('.')[0]] = video.split('.')[1]
         self.transform = transforms.Compose([
                 transforms.ToPILImage(),
@@ -1045,7 +1045,7 @@ class EngageNetDataset(BaseDataset, __DisplMixin):
             # Load the VTT subtitle file
             vtt_file = webvtt.read(subtitle_path)
 
-        video_path = os.path.join(self.vis_root,'videos',f'{video_id}.{self.videos_extension[video_id]}')
+        video_path = os.path.join(self.vis_root,'original_videos',f'{video_id}.{self.videos_extension[video_id]}')
         clip = VideoFileClip(video_path)
         total_num_frames = int(clip.duration * clip.fps)
         clip.close()

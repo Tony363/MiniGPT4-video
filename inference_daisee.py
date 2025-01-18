@@ -47,7 +47,13 @@ def get_arguments():
         --gpu-id 0\
         --label-path /home/tony/MiniGPT-4/engagenet_captions/test_filter_cap.json
 
-
+    python3 inference_daisee.py\
+        --videos-dir /home/tony/nvme2tb/EngageNet/Test/videos\
+        --cfg-path test_configs/mistral_engagenet_finetune_config.yaml\
+        --ckpt minigpt4/training_output/engagenet/mistral_engagenet_instruct/202501172042/checkpoint_7.pth\
+        --num-classes 4\
+        --gpu-id 0\
+        --label-path /home/tony/MiniGPT-4/engagenet_captions/test_filter_cap.json
     """
     parser = argparse.ArgumentParser(description="Inference parameters")
     parser.add_argument("--cfg-path", help="path to configuration file.",default="test_configs/llama2_test_config.yaml")
@@ -287,6 +293,16 @@ if __name__ == "__main__":
     Average score for contextual understanding: 3.2323869610935856
     Average score temporal understanding: 2.843322818086225
     Average score for consistency: 2.2018927444794953
+
+    MiniGPT4-Video - Engagenet Finetune
+    [inference_daisee.py | INFO | 2025-01-18] FINAL ACC - 0.6407010555267334
+    INFO:inference_daisee.py:FINAL ACC - 0.6407010555267334
+    [inference_daisee.py | INFO | 2025-01-18] FINAL PR - 0.7232825756072998
+    INFO:inference_daisee.py:FINAL PR - 0.7232825756072998
+    [inference_daisee.py | INFO | 2025-01-18] FINAL RE - 0.6108909845352173
+    INFO:inference_daisee.py:FINAL RE - 0.6108909845352173
+    [inference_daisee.py | INFO | 2025-01-18] FINAL F1 - 0.5911238789558411
+    INFO:inference_daisee.py:FINAL F1 - 0.5911238789558411
     '''
     program = os.path.basename(__file__)
     if os.path.exists(f"logs/{os.path.splitext(program)[0]}.log"):
