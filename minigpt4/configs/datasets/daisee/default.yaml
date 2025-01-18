@@ -10,11 +10,11 @@ datasets:
 
     build_info: # this is the information needed to build the dataset
       # Be careful not to append minus sign (-) before split to avoid itemizing
-      ann_paths: [/home/tony/MiniGPT-4/daisee_captions/train_val_filter_cap.json] #engagenet_labels/validation_engagement_labels.json] # list of paths to annotation files
-      vis_root: /home/tony/nvme2tb/DAiSEE/dataset/train_val/videos
+      ann_paths: [/mnt/nvme2tb/ieee_fer_dpo/daisee_captions/train_val_filter_cap.json] #engagenet_labels/validation_engagement_labels.json] # list of paths to annotation files
+      vis_root: /mnt/nvme2tb/DAiSEE/dataset/train_val/videos
       subtitles_path: /home/tony/
       model_name: 'mistral' # Language Model Name (available: llama2, mistral)
-      vis_root_val: /home/tony/nvme2tb/DAiSEE/dataset/val/videos
-      ann_paths_val: [/home/tony/MiniGPT-4/daisee_captions/val_filter_cap.json]
-      questions_path: /home/tony/MiniGPT4-video/prompts/daisee_questions.txt
-      instruction_prompts: /home/tony/MiniGPT4-video/prompts/instruction_align.txt
+      vis_root_val: /mnt/nvme2tb/DAiSEE/dataset/val/videos
+      ann_paths_val: [/mnt/nvme2tb/ieee_fer_dpo/daisee_captions/val_filter_cap.json]
+      questions_path: /mnt/nvme2tb/ieee_fer_dpo/prompts/daisee_questions.txt
+      instruction_prompts: /mnt/nvme2tb/ieee_fer_dpo/prompts/instruction_align.txt
