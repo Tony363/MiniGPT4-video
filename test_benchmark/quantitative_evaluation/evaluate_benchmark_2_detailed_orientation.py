@@ -116,7 +116,7 @@ def main():
     # Preparing dictionary of question-answer sets
     prediction_set = {}
     for sample in new_pred_contents:
-        id = sample['video_name']
+        id = sample['video_id'] if 'video_id' in sample else sample['video_name']
         question = sample['Q']
         answer = sample['A']
         pred = sample['pred']

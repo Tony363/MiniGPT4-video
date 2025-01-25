@@ -94,7 +94,7 @@ def main():
 
     # Iterate through each sample in pred_contents
     for sample in pred_contents:
-        video_id = sample['video_name']
+        video_id = sample['video_id'] if 'video_id' in sample else sample['video_name']
         if video_id in video_id_counts:
             video_id_counts[video_id] += 1
         else:
