@@ -9,7 +9,7 @@ model:
   end_sym: "</s>"
   llama_model: "mistralai/Mistral-7B-Instruct-v0.2"
   ckpt: "checkpoints/video_mistral_checkpoint_best.pth"
-  
+
   #"checkpoints/video_mistral_all_checkpoint_last.pth"
   use_grad_checkpoint: True
   chat_template: True
@@ -18,7 +18,6 @@ model:
   length: 50
   use_grad_checkpoint_llm: True
   max_context_len: 3600 #7200
-  # device: "cuda:0"
 
 datasets:
   daisee: #99378 row  - 13224 video
@@ -31,7 +30,6 @@ datasets:
       train:
         name: "blip_caption"
     sample_ratio: 200
-
 
 run:
   task: image_text_pretrain

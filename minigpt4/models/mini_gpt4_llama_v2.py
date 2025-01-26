@@ -1461,7 +1461,12 @@ class MiniGPT4_llama_v2_Rppg(Blip2Base):
         stopping_criteria = StoppingCriteriaList([StoppingCriteriaSub(
             stops=[torch.tensor([i]).to(self.device) for i in stop_words_ids])])
         if img_embeds is None:
-            img_embeds, atts_img = self.encode_img(images.to(self.device))
+            img_embeds, atts_img = self.encode_img(
+                images.to(
+                    self.device,
+                    dtype=torch.float32 if 'cpu' == self._device else torch.half
+                )
+            )
         else:
             # Use images features from the input(4,45,64,5632)
             img_embeds = img_embeds.reshape(-1, *img_embeds.shape[-2:])
@@ -1826,7 +1831,7 @@ class MiniGPT4_llama_v2(Blip2Base):
         use_grad_checkpoint_llm=False,
         max_context_len=3800,
         remove_template = False,
-        device:torch.device="cuda:0",
+        device:torch.device="cpu",
     ):
         super().__init__()
         if "Mistral" in llama_model:
@@ -1841,7 +1846,7 @@ class MiniGPT4_llama_v2(Blip2Base):
         self.low_resource = low_resource
         self.token_pooling = token_pooling
         self.remove_template = remove_template
-
+        
         self._device = device
         logger.info(f"LOADING TO {self._device}")
         logger.info(f"token pooling {self.token_pooling}")
@@ -2283,7 +2288,11 @@ class MiniGPT4_llama_v2(Blip2Base):
         stopping_criteria = StoppingCriteriaList([StoppingCriteriaSub(
             stops=[torch.tensor([i]).to(self._device) for i in stop_words_ids])])
         if img_embeds is None:
-            img_embeds, atts_img = self.encode_img(images.to(self._device))
+            img_embeds, atts_img = self.encode_img(
+                images.to(
+                    self._device,
+                    )
+                )
         else:
             # Use images features from the input(4,45,64,5632)
             img_embeds = img_embeds.reshape(-1, *img_embeds.shape[-2:])
@@ -2555,7 +2564,7 @@ class MiniGPT4_llama_v2(Blip2Base):
         use_grad_checkpoint_llm = cfg.get("use_grad_checkpoint_llm", False)
         max_context_len = cfg.get("max_context_len", 3800)
         remove_template = cfg.get("remove_template", False)
-        device = cfg.get("device", "cuda:0")
+        device = cfg.get("device", "cpu")
 
         model = cls(
             vit_model=vit_model,

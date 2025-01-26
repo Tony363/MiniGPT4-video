@@ -5,11 +5,11 @@ model:
   image_size: 224
   drop_path_rate: 0
   use_grad_checkpoint: False
-  vit_precision: "fp16"
+  vit_precision: "fp16" #"fp16" CHANGE HERE AS WELL!
   freeze_vit: True
   freeze_qformer: True
   model_type: "vit_h"
-  device: "cuda"
+  device: "cuda" # TODO CHANGE HERE TONY CHANGED
 
   # Q-Former
   num_query_token: 32
@@ -21,15 +21,15 @@ model:
   prompt: ""
 
 preprocess:
-    vis_processor:
-        train:
-          name: "blip2_image_train"
-          image_size: 224
-        eval:
-          name: "blip2_image_eval"
-          image_size: 224
-    text_processor:
-        train:
-          name: "blip_caption"
-        eval:
-          name: "blip_caption"
+  vis_processor:
+    train:
+      name: "blip2_image_train"
+      image_size: 224
+    eval:
+      name: "blip2_image_eval"
+      image_size: 224
+  text_processor:
+    train:
+      name: "blip_caption"
+    eval:
+      name: "blip_caption"

@@ -34,6 +34,8 @@ class Config:
 
         runner_config = self.build_runner_config(config)
         model_config = self.build_model_config(config, **user_config)
+        # logger.info("MODEL CONFIG")
+        # logger.info(model_config)
         dataset_config = self.build_dataset_config(config)
 
         # Validate the user-provided runner configuration
@@ -45,7 +47,6 @@ class Config:
         self.config = OmegaConf.merge(
             runner_config, model_config, dataset_config, user_config
         )
-        # logger.info(f"CONFIG {self.config}")
         
     def _validate_runner_config(self, runner_config):
         """
@@ -104,7 +105,7 @@ class Config:
             )
 
         dataset_config = OmegaConf.create()
-        logger.info(f"FROM CONFIG - {datasets}")
+        # logger.info(f"FROM CONFIG - {datasets}")
         for dataset_name in datasets:
 
             logger.info(f"dataset name {dataset_name}")

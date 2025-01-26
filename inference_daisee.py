@@ -35,9 +35,9 @@ def get_arguments():
         --cfg-path test_configs/mistral_daisee_base_config.yaml\
         --ckpt checkpoints/video_mistral_checkpoint_best.pth\
         --num-classes 4\
+        --label-path /home/tony/MiniGPT4-video/daisee_captions/test_filter_cap.json\
+        --question_prompts prompts/daisee_questions.txt
         --gpu-id 0\
-        --label-path /home/tony/MiniGPT4-video/daisee_captions/test_filter_cap.json
-        --question-prompts /home/tony/MiniGPT4-video/prompts/daisee_questions.txt
 
     python3 inference_daisee.py\
         --videos-dir /home/tony/nvme2tb/EngageNet/Test/videos\
@@ -91,25 +91,25 @@ def get_arguments():
         help="text file of instruction prompts",
         required=False
     )
-    parser.add_argument("--gpu-id", type=int, default=0, help="specify the gpu to load the model.")
+    parser.add_argument("--gpu-id", type=int, help="specify the gpu to load the model.")
 
     return parser.parse_args()
 
 def get_test_labels(
     label_path:str
 )->dict:
-    # mapping = {
-    #     'The student is Not-Engaged':0,
-    #     'The student is Barely-Engaged':1,
-    #     'The student is Engaged':2,
-    #     'The student is Highly-Engaged':3
-    # }
     mapping = {
-        'The student is not-engaged':0,
-        'The student is barely-engaged':1,
-        'The student is engaged':2,
-        'The student is highly-engaged':3
+        'The student is Not-Engaged':0,
+        'The student is Barely-Engaged':1,
+        'The student is Engaged':2,
+        'The student is Highly-Engaged':3
     }
+    # mapping = {
+    #     'The student is not-engaged':0,
+    #     'The student is barely-engaged':1,
+    #     'The student is engaged':2,
+    #     'The student is highly-engaged':3
+    # }
     with open(label_path,'r') as f:
         label = json.load(f)
 
@@ -174,7 +174,12 @@ def main()->None:
     )
     num_classes,max_new_tokens = args.num_classes,args.max_new_tokens
     model, vis_processor = init_model(args)
-    model = model.to(config['run']['device'])
+
+    logger.info(config)
+    model = model.to(
+        config['run']['device'],
+        dtype=torch.float32 if 'cpu' == config['run']['device'] else torch.half,
+    )
     model.eval()
     
     video_paths = os.listdir(args.videos_dir)
@@ -200,7 +205,8 @@ def main()->None:
         q2 = random.choice(questions)
 
         prepared_images,q_prepared_instruction,q_prompt = prepare_conversation(video_path,vis_processor,CONV_VISION,instruction,question)
-
+        logger.info("Q-PROMPT\n")
+        logger.info(q_prompt)
         a = model.generate(
             prepared_images, 
             q_prompt, 
@@ -275,7 +281,6 @@ if __name__ == "__main__":
     INFO:inference_daisee.py:FINAL RE - 0.28821173310279846
     INFO:inference_daisee.py:FINAL F1 - 0.3005830943584442
 
-    /home/tony/MiniGPT4-video/gpt_evaluation/mistral_daisee_base_config_eval.json 1784
     Average score for correctness: 3.374439461883408
     Average score for detailed orientation: 3.0812780269058297
     Average score for contextual understanding: 3.3323991031390134
